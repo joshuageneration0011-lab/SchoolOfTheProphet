@@ -1,0 +1,179 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  password        String
+  role            String   // student, instructor, admin
+  status          String   @default("Active") // Active, Suspended
+  enrolledCourses String   @default("[]")     // JSON array of courseIds
+  completedCourses String  @default("[]")     // JSON array of courseIds
+}
+
+model Course {
+  id            String   @id @default(uuid())
+  title         String
+  instructor    String
+  price         Float
+  originalPrice Float?
+  rating        Float    @default(4.8)
+  students      Int      @default(0)
+  thumbnail     String
+  category      String
+  duration      String
+  lessons       Int
+  level         String   // Beginner, Intermediate, Advanced
+  description   String
+  whatYouLearn  String   @default("[]") // JSON string list
+  requirements  String   @default("[]") // JSON string list
+  isFeatured    Boolean  @default(false)
+  isBestseller  Boolean  @default(false)
+  videos        Video[]
+}
+
+model Video {
+  id        String @id @default(uuid())
+  title     String
+  url       String
+  duration  String
+  courseId  String
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id       String @id @default(uuid())
+  student  String
+  course   String
+  amount   Float
+  date     String
+  status   String // Successful, Refunded, Pending
+}
+
+model Assignment {
+  id         String  @id @default(uuid())
+  student    String
+  title      String
+  date       String
+  submission String
+  status     String  // Pending Review, Graded
+  grade      String  @default("-")
+  feedback   String?
+}
+
+model SupportTicket {
+  id       String @id @default(uuid())
+  name     String
+  category String
+  subject  String
+  message  String
+  status   String // Open, Resolved
+  date     String
+}
+
+model Broadcast {
+  id        String   @id @default(uuid())
+  title     String
+  type      String   // Live Stream, Zoom Meeting, Webinar
+  date      String
+  time      String
+  host      String
+  platform  String
+  link      String
+  status    String   // Upcoming, Completed, Draft
+  notified  Boolean  @default(false)
+}
+
+model Certificate {
+  id             String @id
+  student        String
+  course         String
+  completionDate String
+  status         String // Issued, Pending, Revoked
+  grade          String
+  verificationUrl String
+}
+
+model MentorshipGroup {
+  id          String @id @default(uuid())
+  name        String
+  mentor      String
+  mentorEmail String
+  students    String @default("[]") // JSON string list of student names
+  capacity    Int
+  status      String @default("Active")
+  nextSession String
+}
+
+model MentorMessage {
+  id      String  @id @default(uuid())
+  from    String
+  to      String
+  group   String
+  message String
+  date    String
+  read    Boolean @default(false)
+}
+
+model Coupon {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  type        String   // Percentage, Fixed
+  value       Float
+  usageCount  Int      @default(0)
+  maxUses     Int
+  expiry      String
+  status      String   // Active, Expired, Inactive
+  description String
+}
+
+model Scholarship {
+  id          String @id @default(uuid())
+  student     String
+  course      String
+  reason      String
+  status      String // Approved, Pending, Declined
+  dateApplied String
+}
+
+model AuditLog {
+  id       String @id @default(uuid())
+  admin    String
+  action   String
+  target   String
+  date     String
+  severity String // info, warning, danger
+}
+
+model AdminRole {
+  id          String @id @default(uuid())
+  name        String
+  email       String @unique
+  role        String // Super Admin, Instructor, Counselor, etc.
+  permissions String @default("[]") // JSON string list of permission names
+  lastActive  String
+}
+
+model Book {
+  id          String   @id @default(uuid())
+  title       String
+  author      String
+  coverUrl    String
+  description String
+  category    String
+  pdfUrl      String?
+  selarUrl    String?
+  amazonUrl   String?
+  price       Float    @default(0.0)
+  pages       Int      @default(0)
+  downloads   Int      @default(0)
+  rating      Float    @default(5.0)
+}
+
