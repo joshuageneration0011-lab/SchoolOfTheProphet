@@ -6,6 +6,9 @@ import 'package:flutter/foundation.dart';
 
 class ApiService extends ChangeNotifier {
   static String get baseUrl {
+    if (kReleaseMode) {
+      return 'https://sop.joshuageneration.com/api';
+    }
     if (kIsWeb) {
       return 'http://localhost:5001/api';
     } else {
