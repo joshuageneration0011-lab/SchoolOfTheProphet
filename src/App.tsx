@@ -279,7 +279,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8">
-            {['Home', 'Courses', 'Books', 'About', 'Pricing'].map((item) => (
+            {['Home', 'Courses', 'About', 'Pricing'].map((item) => (
               <button
                 key={item}
                 onClick={() => onNavigate(item.toLowerCase())}
@@ -364,7 +364,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
               className="lg:hidden border-t border-white/10 py-4 bg-slate-900/50"
             >
               <nav className="flex flex-col gap-4">
-                {['Home', 'Courses', 'Books', 'About', 'Pricing'].map((item) => (
+                {['Home', 'Courses', 'About', 'Pricing'].map((item) => (
                   <button
                     key={item}
                     onClick={() => {
@@ -1175,131 +1175,6 @@ const CoursesPage = ({ onSelectCourse }: { onSelectCourse: (course: Course) => v
             <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
             <p className="text-gray-600">Try adjusting your filters or search terms</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const BooksPage = () => {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const data = await api.books.list();
-        setBooks(data);
-      } catch (err) {
-        console.error('Failed to load books:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBooks();
-  }, []);
-
-  const filteredBooks = books.filter(b => {
-    const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
-    const matchesSearch = b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          b.author.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50 to-purple-50 py-8 lg:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-2">E-Books Library</h1>
-          <p className="text-gray-600">Equip your spiritual library with prophetic literature resources.</p>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-wrap gap-2">
-            {['All', 'Prophetic', 'Prayer', 'Warfare', 'Economics', 'Kingdom'].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                  selectedCategory === cat
-                    ? 'bg-purple-650 text-white shadow-md'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search books..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-            />
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-10 h-10 border-4 border-purple-650 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : filteredBooks.length === 0 ? (
-          <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center shadow-sm max-w-lg mx-auto">
-            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="font-bold text-slate-800 text-md mb-2">No Books Found</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              We couldn't find any books matching your criteria. Try adjusting your search query or category.
-            </p>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredBooks.map((book) => (
-              <div key={book.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between h-full">
-                <div>
-                  <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
-                    <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
-                    <span className="absolute top-3 right-3 px-2 py-0.5 text-[9px] font-bold bg-purple-650 text-white rounded-full uppercase tracking-wider">
-                      {book.category}
-                    </span>
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-bold text-slate-900 text-sm line-clamp-2 leading-tight">{book.title}</h3>
-                    <p className="text-xs text-slate-500 mt-1 mb-3 font-semibold">By {book.author}</p>
-                    <p className="text-xs text-slate-650 line-clamp-3 leading-relaxed">{book.description}</p>
-                    <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-4 font-medium">
-                      <span>📚 {book.pages} pages</span>
-                      <span>•</span>
-                      <span>⭐ {book.rating} rating</span>
-                      <span>•</span>
-                      <span>⬇️ {book.downloads} downloads</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-5 border-t border-slate-50 bg-slate-50/50 flex items-center justify-between">
-                  <span className="font-extrabold text-slate-900 text-xs tracking-wider">
-                    {book.price === 0 ? 'FREE DOWNLOAD' : `₦${book.price.toLocaleString()}`}
-                  </span>
-                  <a
-                    href={book.pdfUrl || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white text-[11px] font-bold rounded-lg transition-all shadow-sm hover:shadow text-center flex items-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download PDF</span>
-                  </a>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>
@@ -3220,28 +3095,13 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
 const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const auth = useAuth();
   const user = auth?.user;
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'books' | 'users' | 'transactions' | 'assignments' | 'support' | 'broadcasts' | 'certificates' | 'mentorship' | 'promotions' | 'audit' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'users' | 'transactions' | 'assignments' | 'support' | 'broadcasts' | 'certificates' | 'mentorship' | 'promotions' | 'audit' | 'settings'>('overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [coursesList, setCoursesList] = useState<Course[]>([]);
-  const [booksList, setBooksList] = useState<Book[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Custom course page action state
   const [currentCourseAction, setCurrentCourseAction] = useState<'list' | 'create'>('list');
-  const [currentBookAction, setCurrentBookAction] = useState<'list' | 'create' | 'edit'>('list');
-  const [editingBookId, setEditingBookId] = useState<string | null>(null);
-
-  // Form states for Book
-  const [bookTitle, setBookTitle] = useState('');
-  const [bookAuthor, setBookAuthor] = useState('');
-  const [bookCoverUrl, setBookCoverUrl] = useState('');
-  const [bookDescription, setBookDescription] = useState('');
-  const [bookCategory, setBookCategory] = useState('Prophetic');
-  const [bookPdfUrl, setBookPdfUrl] = useState('');
-  const [bookSelarUrl, setBookSelarUrl] = useState('');
-  const [bookAmazonUrl, setBookAmazonUrl] = useState('');
-  const [bookPrice, setBookPrice] = useState('');
-  const [bookPages, setBookPages] = useState('');
 
   // Form states for new course
   const [newTitle, setNewTitle] = useState('');
@@ -3321,8 +3181,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
         coupons,
         scholarships,
         logs,
-        roles,
-        books
+        roles
       ] = await Promise.all([
         api.courses.list(),
         api.users.list(),
@@ -3336,8 +3195,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
         api.promotions.coupons.list(),
         api.promotions.scholarships.list(),
         api.audit.logs.list(),
-        api.audit.roles.list(),
-        api.books.list()
+        api.audit.roles.list()
       ]);
       setCoursesList(courses);
       setUsersList(users);
@@ -3352,7 +3210,6 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
       setScholarshipsList(scholarships);
       setAuditLogs(logs);
       setAdminRoles(roles);
-      setBooksList(books);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     }
@@ -3424,102 +3281,6 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
     }
   };
 
-  const handlePublishBook = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bookTitle || !bookAuthor || !bookDescription || !bookCategory) return;
-    try {
-      const newBook = await api.books.create({
-        title: bookTitle,
-        author: bookAuthor,
-        coverUrl: bookCoverUrl || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400',
-        description: bookDescription,
-        category: bookCategory,
-        pdfUrl: bookPdfUrl,
-        selarUrl: bookSelarUrl,
-        amazonUrl: bookAmazonUrl,
-        price: bookPrice ? parseFloat(bookPrice) : 0,
-        pages: bookPages ? parseInt(bookPages) : 0
-      });
-      setBooksList([...booksList, newBook]);
-      // Reset form
-      setBookTitle('');
-      setBookAuthor('');
-      setBookCoverUrl('');
-      setBookDescription('');
-      setBookCategory('Prophetic');
-      setBookPdfUrl('');
-      setBookSelarUrl('');
-      setBookAmazonUrl('');
-      setBookPrice('');
-      setBookPages('');
-      setCurrentBookAction('list');
-      refreshDashboardData();
-    } catch (err) {
-      console.error('Failed to publish book:', err);
-    }
-  };
-
-  const handleStartEditBook = (book: Book) => {
-    setEditingBookId(book.id);
-    setBookTitle(book.title);
-    setBookAuthor(book.author);
-    setBookCoverUrl(book.coverUrl);
-    setBookDescription(book.description);
-    setBookCategory(book.category);
-    setBookPdfUrl(book.pdfUrl || '');
-    setBookSelarUrl(book.selarUrl || '');
-    setBookAmazonUrl(book.amazonUrl || '');
-    setBookPrice(book.price.toString());
-    setBookPages(book.pages.toString());
-    setCurrentBookAction('edit');
-  };
-
-  const handleUpdateBook = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingBookId) return;
-    try {
-      const updated = await api.books.update(editingBookId, {
-        title: bookTitle,
-        author: bookAuthor,
-        coverUrl: bookCoverUrl,
-        description: bookDescription,
-        category: bookCategory,
-        pdfUrl: bookPdfUrl,
-        selarUrl: bookSelarUrl,
-        amazonUrl: bookAmazonUrl,
-        price: bookPrice ? parseFloat(bookPrice) : 0,
-        pages: bookPages ? parseInt(bookPages) : 0
-      });
-      setBooksList(booksList.map(b => b.id === editingBookId ? updated : b));
-      setEditingBookId(null);
-      // Reset form
-      setBookTitle('');
-      setBookAuthor('');
-      setBookCoverUrl('');
-      setBookDescription('');
-      setBookCategory('Prophetic');
-      setBookPdfUrl('');
-      setBookSelarUrl('');
-      setBookAmazonUrl('');
-      setBookPrice('');
-      setBookPages('');
-      setCurrentBookAction('list');
-      refreshDashboardData();
-    } catch (err) {
-      console.error('Failed to update book:', err);
-    }
-  };
-
-  const handleDeleteBook = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this book?')) return;
-    try {
-      await api.books.delete(id);
-      setBooksList(booksList.filter(b => b.id !== id));
-      refreshDashboardData();
-    } catch (err) {
-      console.error('Failed to delete book:', err);
-    }
-  };
 
   const toggleUserStatus = async (userId: string) => {
     const userItem = usersList.find(u => u.id === userId);
@@ -3627,7 +3388,6 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                 {[
                   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
                   { id: 'courses', label: 'Courses', icon: BookOpen },
-                  { id: 'books', label: 'Books', icon: Book },
                   { id: 'users', label: 'Users', icon: Users },
                   { id: 'transactions', label: 'Transactions', icon: CreditCard },
                   { id: 'assignments', label: 'Assignments', icon: ClipboardList },
@@ -3698,7 +3458,6 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
             {[
               { id: 'overview', label: 'Overview', icon: LayoutDashboard },
               { id: 'courses', label: 'Courses', icon: BookOpen },
-              { id: 'books', label: 'Books', icon: Book },
               { id: 'users', label: 'Users', icon: Users },
               { id: 'transactions', label: 'Transactions', icon: CreditCard },
               { id: 'assignments', label: 'Assignments', icon: ClipboardList },
@@ -3718,7 +3477,6 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                   onClick={() => {
                     setActiveTab(item.id as any);
                     setCurrentCourseAction('list');
-                    setCurrentBookAction('list');
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     isActive
@@ -4220,274 +3978,6 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                   </div>
                 </div>
               </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* BOOKS TAB */}
-        {activeTab === 'books' && (
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-            {/* Header Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-              <div>
-                <h1 className="text-2xl font-extrabold text-white">E-Books Library</h1>
-                <p className="text-slate-400 text-xs mt-1">Manage downloadable literature resources for users.</p>
-              </div>
-
-              {currentBookAction === 'list' ? (
-                <button
-                  onClick={() => {
-                    setCurrentBookAction('create');
-                    setBookTitle('');
-                    setBookAuthor('');
-                    setBookCoverUrl('');
-                    setBookDescription('');
-                    setBookCategory('Prophetic');
-                    setBookPdfUrl('');
-                    setBookSelarUrl('');
-                    setBookAmazonUrl('');
-                    setBookPrice('');
-                    setBookPages('');
-                  }}
-                  className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all self-start sm:self-auto"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Publish New Book</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setCurrentBookAction('list')}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all self-start sm:self-auto"
-                >
-                  Back to Library list
-                </button>
-              )}
-            </div>
-
-            {/* List View */}
-            {currentBookAction === 'list' && (
-              <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden">
-                <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-450 uppercase tracking-wider">
-                    All Books ({booksList.length})
-                  </span>
-                  <div className="relative max-w-xs w-full">
-                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
-                    <input
-                      type="text"
-                      placeholder="Search books..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-4 py-1.5 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-slate-950/40 text-slate-400 border-b border-slate-800">
-                        <th className="p-4 font-semibold">Book Info</th>
-                        <th className="p-4 font-semibold">Category</th>
-                        <th className="p-4 font-semibold">Pages</th>
-                        <th className="p-4 font-semibold">Price</th>
-                        <th className="p-4 font-semibold">Downloads</th>
-                        <th className="p-4 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {booksList
-                        .filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.author.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map((book) => (
-                          <tr key={book.id} className="hover:bg-slate-850/20 text-slate-300">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <img src={book.coverUrl} alt={book.title} className="w-9 h-12 object-cover rounded shadow-md bg-slate-950" />
-                                <div>
-                                  <div className="font-bold text-white leading-tight">{book.title}</div>
-                                  <div className="text-[10px] text-slate-450 mt-0.5">By {book.author}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-4 font-semibold text-slate-200">{book.category}</td>
-                            <td className="p-4 text-slate-400">{book.pages} pages</td>
-                            <td className="p-4 font-extrabold text-amber-400">
-                              {book.price === 0 ? 'FREE' : `₦${book.price.toLocaleString()}`}
-                            </td>
-                            <td className="p-4 text-slate-400">{book.downloads}</td>
-                            <td className="p-4 text-right">
-                              <div className="inline-flex gap-2">
-                                <button
-                                  onClick={() => handleStartEditBook(book)}
-                                  className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg transition-colors font-bold"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteBook(book.id)}
-                                  className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
-                                >
-                                  <Trash className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      {booksList.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="p-8 text-center text-slate-500">
-                            No books published yet. Click the button above to add one.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Create / Edit View */}
-            {(currentBookAction === 'create' || currentBookAction === 'edit') && (
-              <form onSubmit={currentBookAction === 'edit' ? handleUpdateBook : handlePublishBook} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 max-w-3xl">
-                <h3 className="text-white font-bold mb-6 text-sm">
-                  {currentBookAction === 'edit' ? 'Edit Book Details' : 'Enter Book Details'}
-                </h3>
-                <div className="grid md:grid-cols-2 gap-5 mb-5">
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Book Title *</label>
-                    <input
-                      type="text"
-                      required
-                      value={bookTitle}
-                      onChange={(e) => setBookTitle(e.target.value)}
-                      placeholder="e.g. The Prophetic Altar"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Author Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={bookAuthor}
-                      onChange={(e) => setBookAuthor(e.target.value)}
-                      placeholder="e.g. Prophet Elijah Mensah"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-5 mb-5">
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Cover Image URL</label>
-                    <input
-                      type="text"
-                      value={bookCoverUrl}
-                      onChange={(e) => setBookCoverUrl(e.target.value)}
-                      placeholder="https://example.com/cover.jpg"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Category *</label>
-                    <select
-                      value={bookCategory}
-                      onChange={(e) => setBookCategory(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="Prophetic">Prophetic</option>
-                      <option value="Prayer">Prayer</option>
-                      <option value="Warfare">Warfare</option>
-                      <option value="Economics">Economics</option>
-                      <option value="Kingdom">Kingdom</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Pages count</label>
-                    <input
-                      type="number"
-                      value={bookPages}
-                      onChange={(e) => setBookPages(e.target.value)}
-                      placeholder="120"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-5 mb-5">
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Price (₦, 0 for Free)</label>
-                    <input
-                      type="number"
-                      value={bookPrice}
-                      onChange={(e) => setBookPrice(e.target.value)}
-                      placeholder="0"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">PDF Document URL</label>
-                    <input
-                      type="text"
-                      value={bookPdfUrl}
-                      onChange={(e) => setBookPdfUrl(e.target.value)}
-                      placeholder="https://example.com/book.pdf"
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-5 mb-5">
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Selar URL (Optional)</label>
-                    <input
-                      type="text"
-                      value={bookSelarUrl}
-                      onChange={(e) => setBookSelarUrl(e.target.value)}
-                      placeholder="https://selar.co/..."
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Amazon URL (Optional)</label>
-                    <input
-                      type="text"
-                      value={bookAmazonUrl}
-                      onChange={(e) => setBookAmazonUrl(e.target.value)}
-                      placeholder="https://amazon.com/dp/..."
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider mb-2">Description *</label>
-                  <textarea
-                    required
-                    value={bookDescription}
-                    onChange={(e) => setBookDescription(e.target.value)}
-                    rows={4}
-                    placeholder="Enter short description of the e-book..."
-                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div className="flex gap-3 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentBookAction('list')}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs font-bold rounded-xl transition-all shadow-lg shadow-amber-400/10"
-                  >
-                    {currentBookAction === 'edit' ? 'Update Book' : 'Publish Book'}
-                  </button>
-                </div>
-              </form>
             )}
           </motion.div>
         )}
@@ -6635,9 +6125,6 @@ function App() {
           )}
           {currentPage === 'courses' && (
             <CoursesPage onSelectCourse={handleSelectCourse} />
-          )}
-          {currentPage === 'books' && (
-            <BooksPage />
           )}
 
           {currentPage === 'about' && (

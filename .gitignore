@@ -117,3 +117,6 @@ sop-academy-student-app.apk
 *.sqlite
 *.sqlite3
 server/prisma/dev.db
+
+# Deployment Script with Credentials
+deploy_vps.py
