@@ -710,6 +710,19 @@ app.put('/api/promotions/coupons/:id/status', async (req, res) => {
   }
 });
 
+app.delete('/api/promotions/coupons/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const coupon = await prisma.coupon.delete({
+      where: { id }
+    });
+    await createAuditLog('Admin', 'Deleted Promo Coupon', coupon.code, 'warning');
+    res.json({ message: 'Deleted successfully', id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/promotions/scholarships', async (req, res) => {
   try {
     const list = await prisma.scholarship.findMany();

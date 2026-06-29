@@ -28,7 +28,10 @@ async function main() {
     { name: 'Minister Grace Okoro', email: 'grace@example.com', password: 'password123', role: 'student', enrolledCourses: '["2", "3"]' },
     { name: 'Sister Chidinma Okafor', email: 'chidinma@example.com', password: 'password123', role: 'student', enrolledCourses: '["1", "2", "3"]' },
     { name: 'Sister Ruth Okafor', email: 'ruth@example.com', password: 'password123', role: 'student', status: 'Suspended' },
-    { name: 'Demo Student', email: 'student@sop.org', password: 'student123', role: 'student', enrolledCourses: '["1", "2"]' }
+    { name: 'Demo Student', email: 'student@sop.org', password: 'student123', role: 'student', enrolledCourses: '["1", "2"]' },
+    { name: 'Demo Instructor', email: 'instructor@sop.org', password: 'instructor123', role: 'instructor', enrolledCourses: '[]' },
+    { name: 'Prophet Elijah Mensah', email: 'elijah@example.com', password: 'password123', role: 'instructor', enrolledCourses: '[]' },
+    { name: 'Apostle David Okonkwo', email: 'david@example.com', password: 'password123', role: 'instructor', enrolledCourses: '[]' }
   ];
 
   for (const u of users) {
@@ -243,7 +246,8 @@ async function main() {
   const adminRoles = [
     { name: 'System Admin', email: 'admin@sop.org', role: 'Super Admin', permissions: '["All Access"]', lastActive: 'Now' },
     { name: 'Prophet Elijah Mensah', email: 'elijah@example.com', role: 'Instructor', permissions: '["Grade Assignments", "View Students", "Manage Broadcasts"]', lastActive: '2 hours ago' },
-    { name: 'Apostle David Okonkwo', email: 'david@example.com', role: 'Instructor', permissions: '["Grade Assignments", "View Students", "Manage Mentorship"]', lastActive: '5 hours ago' }
+    { name: 'Apostle David Okonkwo', email: 'david@example.com', role: 'Instructor', permissions: '["Grade Assignments", "View Students", "Manage Mentorship"]', lastActive: '5 hours ago' },
+    { name: 'Demo Instructor', email: 'instructor@sop.org', role: 'Instructor', permissions: '["Grade Assignments", "View Students"]', lastActive: '1 hour ago' }
   ];
 
   for (const ar of adminRoles) {

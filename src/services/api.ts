@@ -164,6 +164,10 @@ export const api = {
         fetchAPI(`/promotions/coupons/${couponId}/status`, {
           method: 'PUT',
           body: JSON.stringify({ status })
+        }),
+      delete: (couponId: string) => 
+        fetchAPI(`/promotions/coupons/${couponId}`, {
+          method: 'DELETE'
         })
     },
     scholarships: {

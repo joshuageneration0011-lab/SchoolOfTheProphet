@@ -1,16 +1,15 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useState, createContext, useContext, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from './services/api';
 import { 
   Menu, X, Search, User, BookOpen, Book, Award, Play, Star, 
   ChevronRight, CheckCircle, Clock, Users, DollarSign,
-  TrendingUp, Video, FileText, MessageCircle, Settings,
+  TrendingUp, Video, FileText, Settings,
   LogOut, Heart, Download, Shield, Globe, Zap, Target,
   ArrowRight, PlayCircle, BarChart3, Bell,
   Filter, Grid, List, Mail, Phone, MapPin, Lock, Eye, LayoutDashboard,
   CreditCard, ClipboardList, MessageSquare, Trash,
-  Radio, FileCheck, UserCheck, Tag, History, ShieldCheck, Wifi, Copy, Calendar, Send, Plus, Percent
+  Radio, FileCheck, UserCheck, Tag, History, Wifi, Copy, Calendar, Send, Plus
 } from 'lucide-react';
 
 // Types
@@ -57,7 +56,7 @@ interface User {
   name: string;
   email: string;
   avatar?: string;
-  role: 'student' | 'admin';
+  role: 'student' | 'admin' | 'instructor';
   enrolledCourses?: string[];
   completedCourses?: string[];
 }
@@ -303,7 +302,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
             {user ? (
               <div className="flex items-center gap-4">
                 <button 
-                  onClick={() => onNavigate(user.role === 'admin' ? 'admin-dashboard' : 'student-dashboard')}
+                  onClick={() => onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard')}
                   className="flex items-center gap-2 text-indigo-200 hover:text-amber-400 transition-colors"
                 >
                   <Bell className="w-5 h-5" />
@@ -313,7 +312,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
                     {user.name.charAt(0)}
                   </div>
                   <button
-                    onClick={() => onNavigate(user.role === 'admin' ? 'admin-dashboard' : 'student-dashboard')}
+                    onClick={() => onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard')}
                     className="text-sm font-medium text-indigo-100 hover:text-amber-400 transition-colors"
                   >
                     {user.name}
@@ -382,7 +381,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
                     <>
                       <button
                         onClick={() => {
-                          onNavigate(user.role === 'admin' ? 'admin-dashboard' : 'student-dashboard');
+                          onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard');
                           setMobileMenuOpen(false);
                         }}
                         className="flex items-center gap-2 text-sm font-medium text-indigo-200 hover:text-amber-400 transition-colors"
@@ -1871,17 +1870,23 @@ const LoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
               <Zap className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
               Demo Roles Credentials
             </p>
-            <div className="grid grid-cols-2 gap-3 text-xs text-gray-700">
+            <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-700">
               <div>
-                <span className="font-bold text-gray-900 block">Student Account</span>
-                <span className="font-mono text-purple-700">student@sop.org</span>
+                <span className="font-bold text-gray-900 block">Student</span>
+                <span className="font-mono text-purple-700 block">student@sop.org</span>
+                <span className="text-[9px] text-gray-500 font-semibold">Pass: student123</span>
               </div>
               <div>
-                <span className="font-bold text-gray-900 block">Instructor Account</span>
-                <span className="font-mono text-purple-700">instructor@sop.org</span>
+                <span className="font-bold text-gray-900 block">Instructor</span>
+                <span className="font-mono text-purple-700 block">instructor@sop.org</span>
+                <span className="text-[9px] text-gray-500 font-semibold">Pass: instructor123</span>
+              </div>
+              <div>
+                <span className="font-bold text-gray-900 block">Admin</span>
+                <span className="font-mono text-purple-700 block">admin@sop.org</span>
+                <span className="text-[9px] text-gray-500 font-semibold">Pass: admin123</span>
               </div>
             </div>
-            <p className="text-[10px] text-gray-500 mt-2">Password: any characters (e.g. 123456)</p>
           </div>
 
           <div className="mt-8">
@@ -2039,13 +2044,12 @@ const SignupPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
 
 const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => void }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'books' | 'assignments' | 'mentorship' | 'certificates' | 'support' | 'scholarships'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'assignments' | 'mentorship' | 'certificates' | 'support' | 'scholarships'>('overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   
   // Backend entities
   const [courses, setCourses] = useState<Course[]>([]);
-  const [books, setBooks] = useState<Book[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [broadcasts, setBroadcasts] = useState<any[]>([]);
@@ -2087,8 +2091,7 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
         groupsList,
         scholarshipsList,
         messagesList,
-        usersList,
-        booksList
+        usersList
       ] = await Promise.all([
         api.courses.list(),
         api.assignments.list(),
@@ -2098,8 +2101,7 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
         api.mentorship.groups.list(),
         api.promotions.scholarships.list(),
         api.mentorship.messages.list(),
-        api.users.list(),
-        api.books.list()
+        api.users.list()
       ]);
 
       setCourses(coursesList);
@@ -2110,7 +2112,6 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
       setMentorshipGroups(groupsList);
       setScholarships(scholarshipsList);
       setMessages(messagesList);
-      setBooks(booksList);
 
       if (user) {
         const freshUser = usersList.find((u: any) => u.email === user.email);
@@ -2454,7 +2455,6 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
                 {[
                   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
                   { id: 'courses', label: 'My Courses', icon: BookOpen },
-                  { id: 'books', label: 'Books Library', icon: Book },
                   { id: 'assignments', label: 'Assignments', icon: ClipboardList },
                   { id: 'mentorship', label: 'Mentorship', icon: MessageSquare },
                   { id: 'certificates', label: 'Certificates', icon: Award },
@@ -2503,7 +2503,6 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'courses', label: 'My Courses', icon: BookOpen },
-            { id: 'books', label: 'Books Library', icon: Book },
             { id: 'assignments', label: 'Assignments', icon: ClipboardList },
             { id: 'mentorship', label: 'Mentorship', icon: MessageSquare },
             { id: 'certificates', label: 'Certificates', icon: Award },
@@ -2809,75 +2808,7 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
             </div>
           )}
 
-          {/* TAB: BOOKS */}
-          {activeTab === 'books' && (
-            <div>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div className="relative max-w-md w-full">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search prophetic books catalog..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="text-xs font-semibold text-slate-500">
-                  Showing {books.filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.author.toLowerCase().includes(searchQuery.toLowerCase())).length} books
-                </div>
-              </div>
 
-              {books.filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.author.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
-                <div className="text-slate-500 text-center py-12 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                  No matching books found in the library.
-                </div>
-              ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {books
-                    .filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.author.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((book) => (
-                      <div key={book.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between h-full">
-                        <div>
-                          <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
-                            <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
-                            <span className="absolute top-3 right-3 px-2 py-0.5 text-[9px] font-bold bg-purple-600 text-white rounded-full uppercase tracking-wider">
-                              {book.category}
-                            </span>
-                          </div>
-                          <div className="p-5">
-                            <h3 className="font-bold text-slate-900 text-sm line-clamp-2 leading-tight">{book.title}</h3>
-                            <p className="text-xs text-slate-500 mt-1 mb-3 font-semibold">By {book.author}</p>
-                            <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">{book.description}</p>
-                            <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-4 font-medium">
-                              <span>📚 {book.pages} pages</span>
-                              <span>•</span>
-                              <span>⭐ {book.rating} rating</span>
-                              <span>•</span>
-                              <span>⬇️ {book.downloads} downloads</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-5 border-t border-slate-50 bg-slate-50/50 flex items-center justify-between">
-                          <span className="font-extrabold text-slate-900 text-xs tracking-wider">
-                            {book.price === 0 ? 'FREE DOWNLOAD' : `₦${book.price.toLocaleString()}`}
-                          </span>
-                          <a
-                            href={book.pdfUrl || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white text-[11px] font-bold rounded-lg transition-all shadow-sm hover:shadow text-center flex items-center gap-1.5"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>Download PDF</span>
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* TAB 3: ASSIGNMENTS */}
           {activeTab === 'assignments' && (
@@ -3287,6 +3218,8 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
 };
 
 const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+  const auth = useAuth();
+  const user = auth?.user;
   const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'books' | 'users' | 'transactions' | 'assignments' | 'support' | 'broadcasts' | 'certificates' | 'mentorship' | 'promotions' | 'audit' | 'settings'>('overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [coursesList, setCoursesList] = useState<Course[]>([]);
@@ -5971,7 +5904,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                   const role = prompt("Select Role (e.g. Instructor, Counselor, Support Agent):", "Instructor");
                   if (name && email) {
                     try {
-                      await api.audit.roles.invite({
+                      await api.audit.roles.create({
                         name,
                         email,
                         role,
@@ -6020,7 +5953,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                           <td className="py-4 px-6">
                             <div className="text-sm font-bold text-purple-700 mb-1">{staff.role}</div>
                             <div className="flex flex-wrap gap-1">
-                              {staff.permissions.map((p, idx) => (
+                              {(staff.permissions as string[]).map((p: string, idx: number) => (
                                 <span key={idx} className="px-1.5 py-0.5 text-[9px] font-semibold bg-slate-100 text-slate-700 rounded border border-slate-200">
                                   {p}
                                 </span>
@@ -6034,7 +5967,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={async () => {
-                                  const newPermStr = prompt(`Update permissions for ${staff.name} (comma-separated):`, staff.permissions.join(', '));
+                                  const newPermStr = prompt(`Update permissions for ${staff.name} (comma-separated):`, (staff.permissions as string[]).join(', '));
                                   if (newPermStr !== null) {
                                     try {
                                       await api.audit.roles.updatePermissions(staff.id, newPermStr.split(',').map(s => s.trim()).filter(Boolean));
@@ -6053,7 +5986,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                                   onClick={async () => {
                                     if (confirm(`Are you sure you want to revoke administrative access for ${staff.name}?`)) {
                                       try {
-                                        await api.audit.roles.revoke(staff.id);
+                                        await api.audit.roles.delete(staff.id);
                                         await refreshDashboardData();
                                         alert(`Administrative access credentials revoked for ${staff.name}.`);
                                       } catch (err) {
@@ -6359,7 +6292,7 @@ function App() {
     login: async (_email: string, _password: string) => {
       const loggedUser = await api.auth.login(_email, _password);
       setUser(loggedUser);
-      setCurrentPage(loggedUser.role === 'admin' ? 'admin-dashboard' : 'student-dashboard');
+      setCurrentPage(loggedUser.role === 'admin' || loggedUser.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard');
     },
     logout: () => {
       setUser(null);

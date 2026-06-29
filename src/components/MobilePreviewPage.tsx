@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Wifi, Battery, Shield, Settings, LogOut, ChevronRight, Play, Star,
-  BookOpen, Users, DollarSign, MessageSquare, Send, ArrowRight, Compass,
-  UserCheck, Bell, Award, PlayCircle, Menu, CheckCircle, Zap
+  BookOpen, Users, MessageSquare, Send, ArrowRight, Compass,
+  Bell, PlayCircle, CheckCircle, Zap
 } from 'lucide-react';
 import { api } from '../services/api';
 
