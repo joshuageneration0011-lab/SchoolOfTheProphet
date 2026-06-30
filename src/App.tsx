@@ -2333,37 +2333,59 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
               </div>
 
               {/* Navigation list */}
-              <nav className="flex-1 space-y-1 overflow-y-auto">
+              <nav className="flex-1 space-y-4 overflow-y-auto">
                 {[
-                  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-                  { id: 'courses', label: 'My Courses', icon: BookOpen },
-                  { id: 'assignments', label: 'Assignments', icon: ClipboardList },
-                  { id: 'mentorship', label: 'Mentorship', icon: MessageSquare },
-                  { id: 'certificates', label: 'Certificates', icon: Award },
-                  { id: 'support', label: 'Support Desk', icon: Radio },
-                  { id: 'scholarships', label: 'Scholarships', icon: Tag }
-                ].map(tab => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => { 
-                        setActiveTab(tab.id as any); 
-                        setShowCatalog(false);
-                        setIsMobileSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        isActive 
-                          ? 'bg-purple-50 text-purple-700' 
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-purple-600' : 'text-slate-400'}`} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
+                  {
+                    title: "Academy",
+                    items: [
+                      { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+                      { id: 'courses', label: 'My Courses', icon: BookOpen },
+                      { id: 'assignments', label: 'Assignments', icon: ClipboardList }
+                    ]
+                  },
+                  {
+                    title: "Spiritual Community",
+                    items: [
+                      { id: 'mentorship', label: 'Mentorship', icon: MessageSquare },
+                      { id: 'certificates', label: 'Certificates', icon: Award }
+                    ]
+                  },
+                  {
+                    title: "Support & Aid",
+                    items: [
+                      { id: 'scholarships', label: 'Scholarships', icon: Tag },
+                      { id: 'support', label: 'Support Desk', icon: Radio }
+                    ]
+                  }
+                ].map(group => (
+                  <div key={group.title} className="space-y-1">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-1">
+                      {group.title}
+                    </div>
+                    {group.items.map(tab => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => { 
+                            setActiveTab(tab.id as any); 
+                            setShowCatalog(false);
+                            setIsMobileSidebarOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                            isActive 
+                              ? 'bg-purple-50 text-purple-700' 
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 ${isActive ? 'text-purple-600' : 'text-slate-400'}`} />
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </nav>
             </motion.div>
           </div>
@@ -2381,33 +2403,55 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
         </div>
 
         {/* Sidebar Tabs */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-4">
           {[
-            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-            { id: 'courses', label: 'My Courses', icon: BookOpen },
-            { id: 'assignments', label: 'Assignments', icon: ClipboardList },
-            { id: 'mentorship', label: 'Mentorship', icon: MessageSquare },
-            { id: 'certificates', label: 'Certificates', icon: Award },
-            { id: 'support', label: 'Support Desk', icon: Radio },
-            { id: 'scholarships', label: 'Scholarships', icon: Tag }
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id as any); setShowCatalog(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  isActive 
-                    ? 'bg-purple-50 text-purple-700' 
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-purple-600' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+            {
+              title: "Academy",
+              items: [
+                { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+                { id: 'courses', label: 'My Courses', icon: BookOpen },
+                { id: 'assignments', label: 'Assignments', icon: ClipboardList }
+              ]
+            },
+            {
+              title: "Spiritual Community",
+              items: [
+                { id: 'mentorship', label: 'Mentorship', icon: MessageSquare },
+                { id: 'certificates', label: 'Certificates', icon: Award }
+              ]
+            },
+            {
+              title: "Support & Aid",
+              items: [
+                { id: 'scholarships', label: 'Scholarships', icon: Tag },
+                { id: 'support', label: 'Support Desk', icon: Radio }
+              ]
+            }
+          ].map(group => (
+            <div key={group.title} className="space-y-1">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-1">
+                {group.title}
+              </div>
+              {group.items.map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => { setActiveTab(tab.id as any); setShowCatalog(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      isActive 
+                        ? 'bg-purple-50 text-purple-700' 
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-purple-600' : 'text-slate-400'}`} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </div>
 
