@@ -62,12 +62,32 @@ export const api = {
         method: 'DELETE'
       })
   },
+  audios: {
+    list: () => fetchAPI('/audios'),
+    create: (audioData: any) =>
+      fetchAPI('/audios', {
+        method: 'POST',
+        body: JSON.stringify(audioData)
+      }),
+    update: (audioId: string, audioData: any) =>
+      fetchAPI(`/audios/${audioId}`, {
+        method: 'PUT',
+        body: JSON.stringify(audioData)
+      }),
+    delete: (audioId: string) =>
+      fetchAPI(`/audios/${audioId}`, { method: 'DELETE' })
+  },
   users: {
     list: () => fetchAPI('/users'),
     updateStatus: (userId: string, status: string) => 
       fetchAPI(`/users/${userId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status })
+      }),
+    purchaseAudio: (userId: string, audioId: string) =>
+      fetchAPI(`/users/${userId}/purchase-audio`, {
+        method: 'PUT',
+        body: JSON.stringify({ audioId })
       })
   },
   transactions: {
@@ -216,6 +236,20 @@ export const api = {
       const formData = new FormData();
       formData.append('video', file);
       return fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData
+      }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP error ${res.status}`);
+        }
+        return res.json();
+      });
+    },
+    audio: (file: File) => {
+      const formData = new FormData();
+      formData.append('audio', file);
+      return fetch(`${API_BASE_URL}/upload/audio`, {
         method: 'POST',
         body: formData
       }).then(async (res) => {

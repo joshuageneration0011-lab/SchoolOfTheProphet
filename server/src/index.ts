@@ -57,6 +57,19 @@ app.post('/api/upload', upload.single('video'), (req, res) => {
   }
 });
 
+// Audio file upload (mp3/m4a/wav up to 100MB)
+app.post('/api/upload/audio', upload.single('audio'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No audio file uploaded.' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.status(200).json({ url: fileUrl });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Helper to log audit actions
 async function createAuditLog(admin: string, action: string, target: string, severity: 'info' | 'warning' | 'danger') {
   try {
@@ -103,7 +116,8 @@ app.post('/api/auth/login', async (req, res) => {
       role: user.role,
       status: user.status,
       enrolledCourses: enrolled,
-      completedCourses: completed
+      completedCourses: completed,
+      purchasedAudios: JSON.parse(user.purchasedAudios || '[]')
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -942,6 +956,86 @@ app.delete('/api/audit/roles/:id', async (req, res) => {
     await createAuditLog('Admin', 'Revoked Administrative Staff Access', staff.name, 'warning');
 
     res.json({ message: 'Staff registry credentials revoked successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ─── AUDIO ENDPOINTS ─────────────────────────────────────────────────────────
+app.get('/api/audios', async (req, res) => {
+  try {
+    const audios = await (prisma as any).audio.findMany({ orderBy: { isFeatured: 'desc' } });
+    res.json(audios);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/audios', async (req, res) => {
+  const { title, artist, coverUrl, audioUrl, description, category, duration, price, originalPrice, isFeatured, isBestseller } = req.body;
+  try {
+    const audio = await (prisma as any).audio.create({
+      data: {
+        title,
+        artist,
+        coverUrl,
+        audioUrl,
+        description,
+        category,
+        duration: duration || '0 min',
+        price: parseFloat(price),
+        originalPrice: originalPrice ? parseFloat(originalPrice) : null,
+        isFeatured: isFeatured || false,
+        isBestseller: isBestseller || false
+      }
+    });
+    await createAuditLog('Admin', 'Created Audio Product', title, 'info');
+    res.status(201).json(audio);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/audios/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, artist, coverUrl, audioUrl, description, category, duration, price, originalPrice, isFeatured, isBestseller } = req.body;
+  try {
+    const audio = await (prisma as any).audio.update({
+      where: { id },
+      data: { title, artist, coverUrl, audioUrl, description, category, duration, price: parseFloat(price), originalPrice: originalPrice ? parseFloat(originalPrice) : null, isFeatured: isFeatured || false, isBestseller: isBestseller || false }
+    });
+    await createAuditLog('Admin', 'Updated Audio Product', title, 'info');
+    res.json(audio);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/audios/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const audio = await (prisma as any).audio.delete({ where: { id } });
+    await createAuditLog('Admin', 'Deleted Audio Product', audio.title, 'warning');
+    res.json({ message: 'Audio deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add purchased audio to user's purchasedAudios list
+app.put('/api/users/:id/purchase-audio', async (req, res) => {
+  const { id } = req.params;
+  const { audioId } = req.body;
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const current: string[] = JSON.parse(user.purchasedAudios || '[]');
+    if (!current.includes(audioId)) current.push(audioId);
+    await prisma.user.update({ where: { id }, data: { purchasedAudios: JSON.stringify(current) } });
+    // Increment plays count
+    await (prisma as any).audio.update({ where: { id: audioId }, data: { plays: { increment: 1 } } });
+    res.json({ purchasedAudios: current });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -14,8 +14,9 @@ model User {
   password        String
   role            String   // student, instructor, admin
   status          String   @default("Active") // Active, Suspended
-  enrolledCourses String   @default("[]")     // JSON array of courseIds
-  completedCourses String  @default("[]")     // JSON array of courseIds
+  enrolledCourses  String   @default("[]")     // JSON array of courseIds
+  completedCourses String   @default("[]")     // JSON array of courseIds
+  purchasedAudios  String   @default("[]")     // JSON array of audioIds
 }
 
 model Course {
@@ -177,3 +178,19 @@ model Book {
   rating      Float    @default(5.0)
 }
 
+model Audio {
+  id            String   @id @default(uuid())
+  title         String
+  artist        String
+  coverUrl      String
+  audioUrl      String
+  description   String
+  category      String
+  duration      String   @default("0 min")
+  price         Float
+  originalPrice Float?
+  rating        Float    @default(4.8)
+  plays         Int      @default(0)
+  isFeatured    Boolean  @default(false)
+  isBestseller  Boolean  @default(false)
+}

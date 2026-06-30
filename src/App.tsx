@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useEffect } from 'react';
+import { useState, createContext, useContext, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from './services/api';
 import { 
@@ -9,7 +9,8 @@ import {
   ArrowRight, PlayCircle, BarChart3, Bell,
   Filter, Grid, List, Mail, Phone, MapPin, Lock, Eye, LayoutDashboard,
   CreditCard, ClipboardList, MessageSquare, Trash,
-  Radio, FileCheck, UserCheck, Tag, History, Wifi, Copy, Calendar, Send, Plus, Printer
+  Radio, FileCheck, UserCheck, Tag, History, Wifi, Copy, Calendar, Send, Plus, Printer,
+  Headphones, Music, Volume2, Pause, SkipForward, SkipBack, ShoppingBag
 } from 'lucide-react';
 
 // Types
@@ -51,6 +52,23 @@ interface Book {
 }
 
 
+interface Audio {
+  id: string;
+  title: string;
+  artist: string;
+  coverUrl: string;
+  audioUrl: string;
+  description: string;
+  category: string;
+  duration: string;
+  price: number;
+  originalPrice?: number;
+  rating: number;
+  plays: number;
+  isFeatured?: boolean;
+  isBestseller?: boolean;
+}
+
 interface User {
   id: string;
   name: string;
@@ -59,6 +77,7 @@ interface User {
   role: 'student' | 'admin' | 'instructor';
   enrolledCourses?: string[];
   completedCourses?: string[];
+  purchasedAudios?: string[];
 }
 
 interface AuthContextType {
@@ -279,21 +298,22 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8">
-            {['Home', 'Courses', 'About'].map((item) => (
+            {['Home', 'Courses', 'Audios', 'About'].map((item) => (
               <button
                 key={item}
                 onClick={() => onNavigate(item.toLowerCase())}
-                className={`text-base font-semibold transition-colors ${
+                className={`text-base font-semibold transition-colors flex items-center gap-1.5 ${
                   currentPage === item.toLowerCase() 
                     ? 'text-amber-400' 
                     : 'text-indigo-200 hover:text-amber-400'
                 }`}
               >
+                {item === 'Audios' && <Headphones className="w-4 h-4" />}
                 {item}
               </button>
             ))}
             {/* Return to Dashboard pill — only shown to logged-in users on the course browsing pages */}
-            {user && (currentPage === 'courses' || currentPage === 'course-detail') && (
+            {user && (currentPage === 'courses' || currentPage === 'course-detail' || currentPage === 'audios') && (
               <motion.button
                 onClick={() => onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard')}
                 whileHover={{ scale: 1.04 }}
@@ -379,15 +399,16 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
               className="lg:hidden border-t border-white/10 py-4 bg-slate-900/50"
             >
               <nav className="flex flex-col gap-4">
-                {['Home', 'Courses', 'About'].map((item) => (
+                {['Home', 'Courses', 'Audios', 'About'].map((item) => (
                   <button
                     key={item}
                     onClick={() => {
                       onNavigate(item.toLowerCase());
                       setMobileMenuOpen(false);
                     }}
-                    className="text-left text-sm font-medium text-indigo-200 hover:text-amber-400 transition-colors"
+                    className="text-left text-sm font-medium text-indigo-200 hover:text-amber-400 transition-colors flex items-center gap-2"
                   >
+                    {item === 'Audios' && <Headphones className="w-4 h-4" />}
                     {item}
                   </button>
                 ))}
@@ -395,7 +416,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
                   {user ? (
                     <>
                       {/* Prominent Return-to-Dashboard CTA on mobile when browsing courses */}
-                      {(currentPage === 'courses' || currentPage === 'course-detail') && (
+                      {(currentPage === 'courses' || currentPage === 'course-detail' || currentPage === 'audios') && (
                         <button
                           onClick={() => {
                             onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard');
@@ -6855,8 +6876,167 @@ const PricingPage = () => {
   );
 };
 
+// ─── PUBLIC AUDIOS PAGE ──────────────────────────────────────────────────────
+const AudiosPage = ({
+  audios,
+  onBuy,
+  onNavigate
+}: {
+  audios: Audio[];
+  onBuy: (audio: Audio) => void;
+  onNavigate: (page: string) => void;
+}) => {
+  const { user } = useAuth();
+  const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const categories = ['All', ...Array.from(new Set(audios.map((a: Audio) => a.category)))];
+  const filtered = audios.filter((a: Audio) => {
+    const matchCat = filter === 'All' || a.category === filter;
+    const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || a.artist.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+  const purchasedIds = user?.purchasedAudios || [];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950">
+      {/* Hero */}
+      <div className="relative overflow-hidden py-20 px-4 text-center">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-transparent to-transparent" />
+        <div className="relative max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-400/10 border border-amber-400/30 rounded-full text-amber-400 text-sm font-bold mb-6">
+            <Headphones className="w-4 h-4" />
+            Digital Audio Store
+          </div>
+          <h1 className="text-4xl lg:text-6xl font-black text-white mb-4 leading-tight">
+            Spirit-Filled <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">Audio Messages</span>
+          </h1>
+          <p className="text-lg text-indigo-200/80 mb-8 max-w-xl mx-auto">
+            Purchase anointed prophetic teachings, worship sessions, and prayer guides.
+          </p>
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-400" />
+            <input
+              type="text"
+              placeholder="Search by title or artist..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-indigo-300 focus:outline-none focus:ring-2 focus:ring-amber-400/50 backdrop-blur-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Category Filter */}
+      <div className="max-w-7xl mx-auto px-4 pb-4 flex flex-wrap gap-2 justify-center">
+        {categories.map((cat: string) => (
+          <button
+            key={cat}
+            onClick={() => setFilter(cat)}
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${
+              filter === cat
+                ? 'bg-amber-400 text-slate-900 shadow-lg shadow-amber-400/40'
+                : 'bg-white/10 text-indigo-200 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Audio Grid */}
+      <div className="max-w-7xl mx-auto px-4 py-8 pb-20">
+        {filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <Headphones className="w-16 h-16 text-indigo-600/30 mx-auto mb-4" />
+            <p className="text-indigo-300 text-lg font-medium">No audio products found.</p>
+            {(user?.role === 'admin' || user?.role === 'instructor') && (
+              <button onClick={() => onNavigate('admin-dashboard')} className="mt-4 px-6 py-2 bg-amber-400 text-slate-900 font-bold rounded-xl text-sm">
+                Go to Admin to add audios
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filtered.map((audio: Audio) => {
+              const isPurchased = purchasedIds.includes(audio.id);
+              return (
+                <motion.div
+                  key={audio.id}
+                  whileHover={{ y: -6 }}
+                  className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-sm hover:border-amber-400/30 hover:shadow-2xl hover:shadow-amber-500/10 transition-all group"
+                >
+                  <div className="relative aspect-square overflow-hidden">
+                    <img
+                      src={audio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop'}
+                      alt={audio.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                    {audio.isBestseller && (
+                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-amber-400 text-slate-900 text-[10px] font-black rounded-full uppercase">Bestseller</span>
+                    )}
+                    {audio.isFeatured && !audio.isBestseller && (
+                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-purple-500 text-white text-[10px] font-black rounded-full uppercase">Featured</span>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/40">
+                        <Headphones className="w-7 h-7 text-white" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+                      <Clock className="w-3 h-3 text-indigo-300" />
+                      <span className="text-[10px] text-indigo-200 font-medium">{audio.duration}</span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">{audio.category}</span>
+                    <h3 className="font-bold text-white text-sm mt-1 mb-0.5 line-clamp-2 leading-snug">{audio.title}</h3>
+                    <p className="text-xs text-indigo-300 mb-3">{audio.artist}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        {audio.originalPrice && (
+                          <span className="text-xs text-indigo-400 line-through mr-1.5">₦{audio.originalPrice.toLocaleString()}</span>
+                        )}
+                        <span className="text-lg font-black text-amber-400">₦{audio.price.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span className="text-xs text-indigo-200 font-bold">{audio.rating}</span>
+                      </div>
+                    </div>
+                    {isPurchased ? (
+                      <button
+                        onClick={() => onNavigate('student-dashboard')}
+                        className="w-full py-2.5 bg-green-500/20 border border-green-500/40 text-green-400 text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all"
+                      >
+                        <Play className="w-4 h-4 fill-green-400" />
+                        Play Now in Dashboard
+                      </button>
+                    ) : (
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => onBuy(audio)}
+                        className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 text-sm font-extrabold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        Buy — ₦{audio.price.toLocaleString()}
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
 function App() {
+
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -6872,6 +7052,12 @@ function App() {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank'>('card');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
+  // Audio Store State
+  const [audios, setAudios] = useState<Audio[]>([]);
+  const [checkoutAudio, setCheckoutAudio] = useState<Audio | null>(null);
+  const [isAudioCheckingOut, setIsAudioCheckingOut] = useState(false);
+  const [audioPaymentMethod, setAudioPaymentMethod] = useState<'card' | 'bank'>('card');
+
   const fetchCoursesList = async () => {
     try {
       const data = await api.courses.list();
@@ -6882,8 +7068,18 @@ function App() {
     }
   };
 
+  const fetchAudiosList = async () => {
+    try {
+      const data = await api.audios.list();
+      setAudios(data);
+    } catch (err) {
+      console.error('Failed to load audios from API:', err);
+    }
+  };
+
   useEffect(() => {
     fetchCoursesList();
+    fetchAudiosList();
   }, [enrollmentTrigger]);
 
   const authContext: AuthContextType = {
@@ -6987,7 +7183,153 @@ function App() {
     }, 1500);
   };
 
+  // ─── AUDIO PURCHASE HANDLERS ─────────────────────────────────────────────────
+  const handleAudioBuy = (audio: Audio) => {
+    if (!user) {
+      // Guest: set the audio as pending purchase then send to checkout-auth
+      // For now redirect to login with context
+      setCheckoutAudio(audio);
+      setCurrentPage('login');
+      return;
+    }
+    if (user.role !== 'student') {
+      alert('Only student accounts can purchase audio products.');
+      return;
+    }
+    setCheckoutAudio(audio);
+  };
+
+  const handleCompleteAudioCheckout = async () => {
+    if (!checkoutAudio || !user) return;
+    setIsAudioCheckingOut(true);
+    setTimeout(async () => {
+      try {
+        await api.transactions.create({
+          student: user.name,
+          course: checkoutAudio.title,
+          amount: checkoutAudio.price
+        });
+        await api.users.purchaseAudio(user.id, checkoutAudio.id);
+        // Update local user state
+        const updatedAudios = [...(user.purchasedAudios || []), checkoutAudio.id];
+        setUser({ ...user, purchasedAudios: updatedAudios });
+        alert(`Purchase successful! "${checkoutAudio.title}" is now available in My Audios.`);
+        setCheckoutAudio(null);
+        setAudioPaymentMethod('card');
+        fetchAudiosList();
+        setCurrentPage('student-dashboard');
+      } catch (err) {
+        alert('Audio payment processing failed. Please try again.');
+      } finally {
+        setIsAudioCheckingOut(false);
+      }
+    }, 1500);
+  };
+
+  const renderAudioCheckoutModal = () => {
+    if (!checkoutAudio || !user) return null;
+    return (
+      <AnimatePresence>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-slate-950 rounded-3xl overflow-hidden shadow-2xl w-full max-w-md border border-white/10 flex flex-col max-h-[90vh]"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-white/10 bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-400/20 rounded-xl flex items-center justify-center">
+                  <Headphones className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Audio Purchase</h3>
+                  <p className="text-xs text-indigo-200">Instant digital delivery</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setCheckoutAudio(null); setAudioPaymentMethod('card'); }}
+                className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              {/* Audio Summary */}
+              <div className="flex gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                <img src={checkoutAudio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop'} alt={checkoutAudio.title} className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[10px] bg-amber-400/20 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase">{checkoutAudio.category}</span>
+                  <h4 className="font-bold text-white text-sm truncate mt-1">{checkoutAudio.title}</h4>
+                  <p className="text-xs text-indigo-300">{checkoutAudio.artist}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Clock className="w-3 h-3 text-indigo-400" />
+                    <span className="text-xs text-indigo-400">{checkoutAudio.duration}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Payment Method</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['card', 'bank'] as const).map(method => (
+                    <button
+                      key={method}
+                      onClick={() => setAudioPaymentMethod(method)}
+                      className={`p-4 rounded-2xl border text-left transition-all flex flex-col gap-2 ${
+                        audioPaymentMethod === method
+                          ? 'border-amber-400 bg-amber-400/10 ring-2 ring-amber-400/20'
+                          : 'border-white/10 hover:border-white/20 bg-white/5'
+                      }`}
+                    >
+                      {method === 'card' ? <CreditCard className={`w-5 h-5 ${audioPaymentMethod === 'card' ? 'text-amber-400' : 'text-slate-400'}`} /> : <BookOpen className={`w-5 h-5 ${audioPaymentMethod === 'bank' ? 'text-amber-400' : 'text-slate-400'}`} />}
+                      <div className={`text-xs font-bold ${audioPaymentMethod === method ? 'text-amber-300' : 'text-slate-300'}`}>{method === 'card' ? 'Debit Card' : 'Bank Transfer'}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price */}
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300 font-medium">Total</span>
+                  <span className="text-2xl font-black text-amber-400">₦{checkoutAudio.price.toLocaleString()}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">One-time purchase. Lifetime access.</p>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-white/10 bg-slate-950/80">
+              <button
+                onClick={handleCompleteAudioCheckout}
+                disabled={isAudioCheckingOut}
+                className="w-full py-4 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 font-extrabold rounded-xl shadow-lg hover:shadow-amber-500/30 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {isAudioCheckingOut ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag className="w-5 h-5" />
+                    Pay ₦{checkoutAudio.price.toLocaleString()} & Get Instant Access
+                  </>
+                )}
+              </button>
+              <p className="text-[10px] text-slate-500 text-center mt-2">Secure payment. Audio delivered instantly to your dashboard.</p>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  };
+
   const renderCheckoutModal = () => {
+
     if (!checkoutCourse || !user) return null;
     const finalPrice = checkoutCourse.price - discount;
 
@@ -7264,7 +7606,13 @@ function App() {
           {currentPage === 'courses' && (
             <CoursesPage courses={courses} onSelectCourse={handleSelectCourse} />
           )}
-
+          {currentPage === 'audios' && (
+            <AudiosPage
+              audios={audios}
+              onBuy={handleAudioBuy}
+              onNavigate={handleNavigate}
+            />
+          )}
           {currentPage === 'about' && (
             <AboutPage />
           )}
@@ -7273,6 +7621,7 @@ function App() {
           )}
         </main>
         {renderCheckoutModal()}
+        {renderAudioCheckoutModal()}
         <Footer />
       </div>
     </AuthContext.Provider>
