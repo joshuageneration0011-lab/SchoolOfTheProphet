@@ -3927,7 +3927,7 @@ const StudentDashboard = ({
 const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const auth = useAuth();
   const user = auth?.user;
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'users' | 'transactions' | 'assignments' | 'support' | 'broadcasts' | 'certificates' | 'mentorship' | 'promotions' | 'audit' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'audios' | 'users' | 'transactions' | 'assignments' | 'support' | 'broadcasts' | 'certificates' | 'mentorship' | 'promotions' | 'audit' | 'settings'>('overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [coursesList, setCoursesList] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -4006,6 +4006,19 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [adminRoles, setAdminRoles] = useState<any[]>([]);
 
+  // ─── AUDIOS MANAGEMENT STATE ───
+  const [adminAudiosList, setAdminAudiosList] = useState<Audio[]>([]);
+  const [showAudioForm, setShowAudioForm] = useState(false);
+  const [editingAudio, setEditingAudio] = useState<Audio | null>(null);
+  const [audioFormData, setAudioFormData] = useState({
+    title: '', artist: '', coverUrl: '', audioUrl: '',
+    description: '', category: 'Prophetic', duration: '',
+    price: '', originalPrice: '', isFeatured: false, isBestseller: false
+  });
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isSavingAudio, setIsSavingAudio] = useState(false);
+
   // Load all dashboard tables from the backend REST API
   const refreshDashboardData = async () => {
     try {
@@ -4022,7 +4035,8 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
         coupons,
         scholarships,
         logs,
-        roles
+        roles,
+        audios
       ] = await Promise.all([
         api.courses.list(),
         api.users.list(),
@@ -4036,7 +4050,8 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
         api.promotions.coupons.list(),
         api.promotions.scholarships.list(),
         api.audit.logs.list(),
-        api.audit.roles.list()
+        api.audit.roles.list(),
+        api.audios.list()
       ]);
       setCoursesList(courses);
       setUsersList(users);
@@ -4051,6 +4066,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
       setScholarshipsList(scholarships);
       setAuditLogs(logs);
       setAdminRoles(roles);
+      setAdminAudiosList(audios);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     }
@@ -4180,6 +4196,89 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
     setCoursesList(coursesList.filter(c => c.id !== courseId));
   };
 
+  // ─── AUDIO CRUD METHODS ───
+  const handleSaveAudio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!audioFormData.title || !audioFormData.artist || !audioFormData.price) {
+      alert('Please fill out Title, Artist, and Price.');
+      return;
+    }
+    setIsSavingAudio(true);
+    try {
+      let finalAudioUrl = audioFormData.audioUrl;
+      // Upload file if selected
+      if (audioFile) {
+        setIsUploadingAudio(true);
+        const res = await api.upload.audio(audioFile);
+        finalAudioUrl = res.url;
+        setIsUploadingAudio(false);
+      }
+
+      const payload = {
+        ...audioFormData,
+        audioUrl: finalAudioUrl,
+        price: parseFloat(audioFormData.price),
+        originalPrice: audioFormData.originalPrice ? parseFloat(audioFormData.originalPrice) : null,
+      };
+
+      if (editingAudio) {
+        await api.audios.update(editingAudio.id, payload);
+        alert('Audio updated successfully!');
+      } else {
+        await api.audios.create(payload);
+        alert('Audio created successfully!');
+      }
+
+      // Reset form and state
+      setAudioFormData({
+        title: '', artist: '', coverUrl: '', audioUrl: '',
+        description: '', category: 'Prophetic', duration: '',
+        price: '', originalPrice: '', isFeatured: false, isBestseller: false
+      });
+      setAudioFile(null);
+      setEditingAudio(null);
+      setShowAudioForm(false);
+      await refreshDashboardData();
+    } catch (err: any) {
+      console.error('Failed to save audio:', err);
+      alert(err.message || 'Failed to save audio product.');
+    } finally {
+      setIsSavingAudio(false);
+      setIsUploadingAudio(false);
+    }
+  };
+
+  const handleEditAudio = (audio: Audio) => {
+    setEditingAudio(audio);
+    setAudioFormData({
+      title: audio.title,
+      artist: audio.artist,
+      coverUrl: audio.coverUrl,
+      audioUrl: audio.audioUrl,
+      description: audio.description,
+      category: audio.category,
+      duration: audio.duration,
+      price: String(audio.price),
+      originalPrice: audio.originalPrice ? String(audio.originalPrice) : '',
+      isFeatured: audio.isFeatured || false,
+      isBestseller: audio.isBestseller || false
+    });
+    setShowAudioForm(true);
+  };
+
+  const handleDeleteAudio = async (audioId: string) => {
+    if (!confirm('Are you sure you want to delete this audio product?')) return;
+    try {
+      await api.audios.delete(audioId);
+      await refreshDashboardData();
+      alert('Audio deleted successfully.');
+    } catch (err: any) {
+      console.error('Failed to delete audio:', err);
+      alert(err.message || 'Failed to delete audio.');
+    }
+  };
+
+
   // Helper to get YouTube Embed
   const getYouTubeEmbedUrl = (url: string) => {
     if (!url) return '';
@@ -4266,6 +4365,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                 {[
                   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
                   { id: 'courses', label: 'Courses', icon: BookOpen },
+                  { id: 'audios', label: 'Audios', icon: Headphones },
                   { id: 'users', label: 'Users', icon: Users },
                   { id: 'transactions', label: 'Transactions', icon: CreditCard },
                   { id: 'assignments', label: 'Assignments', icon: ClipboardList },
@@ -4341,6 +4441,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
             {[
               { id: 'overview', label: 'Overview', icon: LayoutDashboard },
               { id: 'courses', label: 'Courses', icon: BookOpen },
+              { id: 'audios', label: 'Audios', icon: Headphones },
               { id: 'users', label: 'Users', icon: Users },
               { id: 'transactions', label: 'Transactions', icon: CreditCard },
               { id: 'assignments', label: 'Assignments', icon: ClipboardList },
@@ -6648,6 +6749,321 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
             </div>
           </motion.div>
         )}
+
+        {/* AUDIOS TAB */}
+        {activeTab === 'audios' && (
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            {!showAudioForm ? (
+              <>
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Audio Library Directory</h1>
+                    <p className="text-gray-600">Manage digital audio messages, pricing, and audio files</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setEditingAudio(null);
+                      setAudioFormData({
+                        title: '', artist: '', coverUrl: '', audioUrl: '',
+                        description: '', category: 'Prophetic', duration: '',
+                        price: '', originalPrice: '', isFeatured: false, isBestseller: false
+                      });
+                      setAudioFile(null);
+                      setShowAudioForm(true);
+                    }}
+                    className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-amber-500 text-white font-semibold rounded-xl shadow-lg flex items-center gap-2 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Audio Product
+                  </button>
+                </div>
+
+                {/* Audios Table list */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Audio Title</th>
+                          <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Artist / Speaker</th>
+                          <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Price</th>
+                          <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Duration</th>
+                          <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Category</th>
+                          <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Sales / Plays</th>
+                          <th className="text-right py-4 px-6 text-xs font-bold text-gray-500 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {adminAudiosList.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-10 text-center text-gray-500 text-sm">
+                              No audio products registered. Click "Add Audio Product" to create one.
+                            </td>
+                          </tr>
+                        ) : (
+                          adminAudiosList.map((audio: Audio) => (
+                            <tr key={audio.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="py-4 px-6">
+                                <div className="flex items-center gap-3">
+                                  <img src={audio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop'} alt="" className="w-10 h-10 object-cover rounded-lg border border-gray-100" />
+                                  <div>
+                                    <div className="font-semibold text-gray-900 text-sm line-clamp-1">{audio.title}</div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      {audio.isBestseller && <span className="text-[9px] font-black text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">BESTSELLER</span>}
+                                      {audio.isFeatured && <span className="text-[9px] font-black text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">FEATURED</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-sm text-gray-600 font-medium">{audio.artist}</td>
+                              <td className="py-4 px-6 text-sm font-bold text-purple-600">
+                                <div>₦{audio.price.toLocaleString()}</div>
+                                {audio.originalPrice && <div className="text-xs text-gray-400 line-through">₦{audio.originalPrice.toLocaleString()}</div>}
+                              </td>
+                              <td className="py-4 px-6 text-sm text-gray-500">{audio.duration}</td>
+                              <td className="py-4 px-6">
+                                <span className="px-2.5 py-1 text-xs bg-indigo-50 text-indigo-600 rounded-full font-bold uppercase">
+                                  {audio.category}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-sm text-gray-500">{audio.plays} purchased</td>
+                              <td className="py-4 px-6 text-right space-x-2">
+                                <button 
+                                  onClick={() => handleEditAudio(audio)}
+                                  className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteAudio(audio.id)}
+                                  className="px-3 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+                <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{editingAudio ? 'Edit Audio Product' : 'Add New Audio Product'}</h2>
+                    <p className="text-sm text-gray-500">Provide audio files, pricing detail, and display information</p>
+                  </div>
+                  <button 
+                    onClick={() => { setShowAudioForm(false); setEditingAudio(null); }}
+                    className="text-gray-400 hover:text-gray-600 text-sm font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveAudio} className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Left Column - General Info */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Audio Title *</label>
+                        <input
+                          type="text"
+                          required
+                          value={audioFormData.title}
+                          onChange={e => setAudioFormData({...audioFormData, title: e.target.value})}
+                          placeholder="e.g. Navigating Prophetic Seasons"
+                          className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Artist / Speaker *</label>
+                        <input
+                          type="text"
+                          required
+                          value={audioFormData.artist}
+                          onChange={e => setAudioFormData({...audioFormData, artist: e.target.value})}
+                          placeholder="e.g. Apostle Joshua Generation"
+                          className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Price (₦) *</label>
+                          <input
+                            type="number"
+                            required
+                            min="0"
+                            value={audioFormData.price}
+                            onChange={e => setAudioFormData({...audioFormData, price: e.target.value})}
+                            placeholder="3000"
+                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Original Price (₦)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={audioFormData.originalPrice}
+                            onChange={e => setAudioFormData({...audioFormData, originalPrice: e.target.value})}
+                            placeholder="e.g. 5000"
+                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Category *</label>
+                          <select
+                            value={audioFormData.category}
+                            onChange={e => setAudioFormData({...audioFormData, category: e.target.value})}
+                            className="w-full p-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="Prophetic">Prophetic</option>
+                            <option value="Worship">Worship</option>
+                            <option value="Prayer">Prayer</option>
+                            <option value="Warfare">Warfare</option>
+                            <option value="Sermon">Sermon</option>
+                            <option value="Instructional">Instructional</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Duration *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. 45 min or 1 hr 12 min"
+                            value={audioFormData.duration}
+                            onChange={e => setAudioFormData({...audioFormData, duration: e.target.value})}
+                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-6 pt-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={audioFormData.isFeatured}
+                            onChange={e => setAudioFormData({...audioFormData, isFeatured: e.target.checked})}
+                            className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                          />
+                          <span className="text-xs font-semibold text-gray-700">Featured Product</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={audioFormData.isBestseller}
+                            onChange={e => setAudioFormData({...audioFormData, isBestseller: e.target.checked})}
+                            className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                          />
+                          <span className="text-xs font-semibold text-gray-700">Mark Bestseller</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Right Column - Media & Files */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Cover Image URL *</label>
+                        <input
+                          type="url"
+                          required
+                          value={audioFormData.coverUrl}
+                          onChange={e => setAudioFormData({...audioFormData, coverUrl: e.target.value})}
+                          placeholder="https://images.unsplash.com/..."
+                          className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Audio file source</label>
+                        <div className="space-y-3">
+                          <div className="flex gap-4 p-4 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+                            <input
+                              type="file"
+                              accept="audio/*"
+                              id="audio-file-upload-input"
+                              onChange={e => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setAudioFile(e.target.files[0]);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <label 
+                              htmlFor="audio-file-upload-input"
+                              className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm flex items-center gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              Select Audio File
+                            </label>
+                            <span className="text-xs text-gray-500 self-center truncate">
+                              {audioFile ? audioFile.name : 'No file chosen (up to 100MB)'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] text-gray-400 font-bold mb-1">OR Enter Direct Audio Stream/Download URL</span>
+                            <input
+                              type="url"
+                              value={audioFormData.audioUrl}
+                              onChange={e => setAudioFormData({...audioFormData, audioUrl: e.target.value})}
+                              placeholder="https://yourserver.com/audio.mp3"
+                              className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Description</label>
+                        <textarea
+                          rows={3}
+                          value={audioFormData.description}
+                          onChange={e => setAudioFormData({...audioFormData, description: e.target.value})}
+                          placeholder="Explain what learners will receive in this spiritual audio message..."
+                          className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-6 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAudioForm(false); setEditingAudio(null); }}
+                      className="px-5 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl text-sm hover:bg-gray-50 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingAudio || isUploadingAudio}
+                      className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-amber-500 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg disabled:opacity-50 transition-all flex items-center gap-2"
+                    >
+                      {isSavingAudio || isUploadingAudio ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Audio Product'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </motion.div>
+        )}
+
 
         {/* SETTINGS TAB */}
         {activeTab === 'settings' && (
