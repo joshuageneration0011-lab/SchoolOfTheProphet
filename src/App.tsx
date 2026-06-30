@@ -279,7 +279,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8">
-            {['Home', 'Courses', 'About', 'Pricing'].map((item) => (
+            {['Home', 'Courses', 'About'].map((item) => (
               <button
                 key={item}
                 onClick={() => onNavigate(item.toLowerCase())}
@@ -364,7 +364,7 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
               className="lg:hidden border-t border-white/10 py-4 bg-slate-900/50"
             >
               <nav className="flex flex-col gap-4">
-                {['Home', 'Courses', 'About', 'Pricing'].map((item) => (
+                {['Home', 'Courses', 'About'].map((item) => (
                   <button
                     key={item}
                     onClick={() => {
@@ -461,7 +461,7 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-3">
-              {['About Us', 'Courses', 'Instructors', 'Pricing', 'Contact'].map((link) => (
+              {['About Us', 'Courses', 'Instructors', 'Contact'].map((link) => (
                 <li key={link}>
                   <a href="#" className="text-gray-400 hover:text-white transition-colors">{link}</a>
                 </li>
