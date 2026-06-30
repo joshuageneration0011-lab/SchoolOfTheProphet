@@ -1042,7 +1042,192 @@ app.put('/api/users/:id/purchase-audio', async (req, res) => {
 });
 
 
+// Auto-seeding function for fresh databases
+async function autoSeedIfEmpty() {
+  try {
+    // 1. Seed courses & video lectures if empty
+    const courseCount = await prisma.course.count();
+    if (courseCount === 0) {
+      console.log('Database has 0 courses. Automatically seeding default courses & video lectures...');
+      const courses = [
+        {
+          id: '1',
+          title: 'Foundations of Prophetic Ministry',
+          instructor: 'Prophet Elijah Mensah',
+          price: 29999,
+          originalPrice: 59999,
+          rating: 4.9,
+          students: 14520,
+          thumbnail: 'https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=800&h=450&fit=crop',
+          category: 'Prophetic',
+          duration: '24 hours',
+          lessons: 5,
+          level: 'Beginner',
+          description: "Learn the biblical foundations of the prophetic office, hearing God's voice, and operating in the gift of prophecy with accuracy and integrity.",
+          whatYouLearn: JSON.stringify(["Hearing God's voice clearly", "Understanding prophetic gifts", "Delivering prophetic words", "Prophetic protocol & ethics", "Building a prophetic lifestyle"]),
+          requirements: JSON.stringify(["A Bible (any version)", "A sincere desire to grow spiritually", "Willingness to practice hearing God"]),
+          isFeatured: true,
+          isBestseller: true
+        },
+        {
+          id: '2',
+          title: 'The School of Intercessory Prayer',
+          instructor: 'Prophetess Grace Adeyemi',
+          price: 19999,
+          originalPrice: 39999,
+          rating: 4.8,
+          students: 11230,
+          thumbnail: 'https://images.unsplash.com/photo-1507692049790-de58290a4334?w=800&h=450&fit=crop',
+          category: 'Prayer',
+          duration: '18 hours',
+          lessons: 3,
+          level: 'Intermediate',
+          description: 'Master the art of intercessory prayer, travailing in the Spirit, and standing in the gap for nations, communities, and individuals.',
+          whatYouLearn: JSON.stringify(["Principles of intercession", "Travailing prayer", "Spiritual warfare prayers", "Prayer watches & schedules", "Prophetic intercession"]),
+          requirements: JSON.stringify(["Basic understanding of prayer", "Committed prayer life"]),
+          isFeatured: true,
+          isBestseller: false
+        },
+        {
+          id: '3',
+          title: 'Spiritual Warfare & Deliverance Mastery',
+          instructor: 'Apostle David Okonkwo',
+          price: 35000,
+          rating: 4.7,
+          students: 8945,
+          thumbnail: 'https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=800&h=450&fit=crop',
+          category: 'Warfare',
+          duration: '32 hours',
+          lessons: 2,
+          level: 'Advanced',
+          description: 'Understand the dynamics of spiritual warfare, discerning demonic operations, and ministering deliverance with biblical authority.',
+          whatYouLearn: JSON.stringify(["Armor of God deep study", "Identifying demonic strongholds", "Deliverance ministry protocols", "Self-deliverance techniques", "Maintaining freedom"]),
+          requirements: JSON.stringify(["Strong biblical foundation", "Experience in prayer ministry"]),
+          isFeatured: true,
+          isBestseller: true
+        }
+      ];
+
+      for (const c of courses) {
+        await prisma.course.create({ data: c });
+      }
+
+      const videos = [
+        { title: 'Lesson 1: The Calling of the Prophet', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '15 min', courseId: '1' },
+        { title: 'Lesson 2: Protocol of the Spirit', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '20 min', courseId: '1' },
+        { title: 'Lesson 3: Testing Prophetic Words', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '18 min', courseId: '1' },
+        { title: 'Lesson 4: Spontaneous Songs of the Spirit', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '25 min', courseId: '1' },
+        { title: 'Lesson 5: Activation Exercises', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '30 min', courseId: '1' },
+        
+        { title: 'Lesson 1: Understanding Intercession', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '22 min', courseId: '2' },
+        { title: 'Lesson 2: Stand in the Gap', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '35 min', courseId: '2' },
+        { title: 'Lesson 3: The Watchman Anointing', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '28 min', courseId: '2' },
+
+        { title: 'Lesson 1: Discerning Demonic Strongholds', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '40 min', courseId: '3' },
+        { title: 'Lesson 2: Deliverance Ministry Protocols', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '45 min', courseId: '3' }
+      ];
+
+      for (const v of videos) {
+        await prisma.video.create({ data: v });
+      }
+      console.log('Seeded courses and videos successfully.');
+    }
+
+    // 2. Seed digital audios if empty
+    const audioCount = await (prisma as any).audio.count();
+    if (audioCount === 0) {
+      console.log('Database has 0 audios. Seeding 5 default digital audio courses...');
+      const audios = [
+        {
+          title: 'Discerning Prophetic Times & Seasons',
+          artist: 'Apostle Joshua Generation',
+          coverUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop',
+          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+          description: 'Deep dive into understanding spiritual watches, registering shifts in the atmosphere, and moving with prophetic accuracy.',
+          category: 'Prophetic',
+          duration: '1 hr 15 min',
+          price: 2500,
+          originalPrice: 4500,
+          rating: 4.9,
+          plays: 24,
+          isFeatured: true,
+          isBestseller: true
+        },
+        {
+          title: 'Deep Prophetic Intercession & Worship',
+          artist: 'Minister Grace Okoro',
+          coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop',
+          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+          description: 'Anointed atmospheric worship designed to usher you into deeper portals of personal and corporate intercessory prayer.',
+          category: 'Worship',
+          duration: '58 min',
+          price: 1500,
+          originalPrice: 3000,
+          rating: 4.8,
+          plays: 18,
+          isFeatured: false,
+          isBestseller: false
+        },
+        {
+          title: 'Warfare Prayers & Midnight Decree',
+          artist: 'Apostle David Okonkwo',
+          coverUrl: 'https://images.unsplash.com/photo-1442504028989-ab58b5f69a3a?w=400&h=400&fit=crop',
+          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+          description: 'Command the morning watches and release strategic midnight decrees to dismantle dark spiritual strongholds.',
+          category: 'Warfare',
+          duration: '1 hr 45 min',
+          price: 3000,
+          originalPrice: 5000,
+          rating: 4.9,
+          plays: 35,
+          isFeatured: true,
+          isBestseller: true
+        },
+        {
+          title: "The Watchman's Call: Strategic Prayer",
+          artist: 'Prophetess Grace Adeyemi',
+          coverUrl: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&h=400&fit=crop',
+          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+          description: 'Equipping global watchmen to construct effective prayer coordinates to cover families, local churches, and territories.',
+          category: 'Prayer',
+          duration: '1 hr 20 min',
+          price: 2000,
+          originalPrice: 3500,
+          rating: 4.7,
+          plays: 12,
+          isFeatured: false,
+          isBestseller: false
+        },
+        {
+          title: 'Activating the Gift of Discerning of Spirits',
+          artist: 'Prophet Elijah Mensah',
+          coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop',
+          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+          description: 'Intensive scriptural exposition and activation guidelines on registering angelic entities, spiritual frequencies, and demonic operations.',
+          category: 'Prophetic',
+          duration: '2 hr 5 min',
+          price: 3500,
+          originalPrice: 6000,
+          rating: 4.9,
+          plays: 42,
+          isFeatured: true,
+          isBestseller: true
+        }
+      ];
+
+      for (const a of audios) {
+        await (prisma as any).audio.create({ data: a });
+      }
+      console.log('Seeded 5 digital audio courses successfully.');
+    }
+  } catch (err) {
+    console.error('Error executing auto-seed:', err);
+  }
+}
+
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`SOP Academy REST API Backend running on http://localhost:${PORT}`);
+  await autoSeedIfEmpty();
 });
+
