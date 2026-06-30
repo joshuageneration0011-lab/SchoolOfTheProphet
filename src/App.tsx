@@ -1185,8 +1185,20 @@ const CoursesPage = ({ courses, onSelectCourse }: { courses: Course[], onSelectC
   );
 };
 
-const CourseDetailPage = ({ course, onBack, onEnroll }: { course: Course; onBack: () => void; onEnroll: () => void }) => {
+const CourseDetailPage = ({ 
+  course, 
+  onBack, 
+  onEnroll,
+  onResume
+}: { 
+  course: Course; 
+  onBack: () => void; 
+  onEnroll: () => void;
+  onResume: (course: Course) => void;
+}) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'curriculum' | 'instructor' | 'reviews'>('overview');
+  const { user } = useAuth();
+  const isEnrolled = user && user.role === 'student' && user.enrolledCourses?.includes(course.id);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
@@ -1400,14 +1412,26 @@ const CourseDetailPage = ({ course, onBack, onEnroll }: { course: Course; onBack
                 <div className="text-3xl font-bold text-purple-600">₦{course.price.toLocaleString()}</div>
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={onEnroll}
-                className="w-full py-4 bg-gradient-to-r from-purple-600 to-amber-500 text-white font-semibold rounded-xl shadow-lg mb-4"
-              >
-                Enroll Now
-              </motion.button>
+              {isEnrolled ? (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onResume(course)}
+                  className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold rounded-xl shadow-lg mb-4 flex items-center justify-center gap-2"
+                >
+                  <PlayCircle className="w-5 h-5" />
+                  Resume Course
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={onEnroll}
+                  className="w-full py-4 bg-gradient-to-r from-purple-600 to-amber-500 text-white font-semibold rounded-xl shadow-lg mb-4"
+                >
+                  Enroll Now
+                </motion.button>
+              )}
 
               <button className="w-full py-4 bg-gray-100 text-gray-900 font-semibold rounded-xl hover:bg-gray-200 transition-colors mb-6">
                 Add to Wishlist
@@ -2668,7 +2692,109 @@ const StudentDashboard = ({
   // LECTURE ROOM SUB-VIEW
   if (activeLectureCourse) {
     const courseVideos = activeLectureCourse.videos || [];
-    const currentPlayingVideo = activeVideo || courseVideos[0];
+
+    // If no active video selected, show the Syllabus / Video Directory view
+    if (!activeVideo) {
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+          {/* Syllabus Header */}
+          <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-30">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => {
+                  setActiveLectureCourse(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+              >
+                ← Back to Dashboard
+              </button>
+              <div>
+                <h2 className="font-extrabold text-lg text-slate-900">{activeLectureCourse.title}</h2>
+                <p className="text-xs text-purple-650 font-bold uppercase tracking-wider">{activeLectureCourse.category} • Instructor: {activeLectureCourse.instructor}</p>
+              </div>
+            </div>
+            <span className="px-3 py-1 text-xs font-bold bg-purple-100 text-purple-700 rounded-full">
+              Syllabus Directory
+            </span>
+          </div>
+
+          {/* Syllabus Content */}
+          <div className="max-w-4xl mx-auto w-full px-6 py-8 flex-1">
+            
+            {/* Overview / Banner Card */}
+            <div className="bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 text-white rounded-3xl p-6 lg:p-8 shadow-xl mb-8 flex flex-col md:flex-row gap-6 items-center">
+              <img src={activeLectureCourse.thumbnail} alt={activeLectureCourse.title} className="w-full md:w-56 aspect-video object-cover rounded-2xl border border-white/10 shadow-lg" />
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-2xl font-black mb-2">{activeLectureCourse.title}</h3>
+                <p className="text-sm text-indigo-200/90 leading-relaxed mb-4">{activeLectureCourse.description}</p>
+                <div className="flex flex-wrap gap-4 justify-center md:justify-start text-xs text-purple-300 font-bold">
+                  <span>⏱ {activeLectureCourse.duration} content</span>
+                  <span>•</span>
+                  <span>📖 {courseVideos.length || activeLectureCourse.lessons} lessons</span>
+                </div>
+              </div>
+            </div>
+
+            {/* List of Videos / Topics */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <PlayCircle className="w-6 h-6 text-purple-600 animate-pulse" />
+                  Available Video Lectures ({courseVideos.length})
+                </h3>
+                <span className="text-xs font-medium text-slate-500">Click a video to open the Lecture Room</span>
+              </div>
+
+              {courseVideos.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center shadow-sm">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Video className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h4 className="font-bold text-slate-700 text-lg mb-1">No Video Uploads Yet</h4>
+                  <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                    This course has no videos uploaded. Contact the school administration or your mentor for access.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {courseVideos.map((video: any, index: number) => (
+                    <div 
+                      key={video.id}
+                      onClick={() => setActiveVideo(video)}
+                      className="bg-white border border-slate-100 hover:border-purple-200 hover:shadow-md rounded-2xl p-5 flex items-center justify-between transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 bg-purple-50 group-hover:bg-purple-100 rounded-xl flex items-center justify-center transition-colors flex-shrink-0">
+                          <Play className="w-5 h-5 text-purple-600 fill-purple-200 group-hover:fill-purple-400 group-hover:scale-110 transition-all" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] text-purple-650 font-bold uppercase tracking-wider">Lesson {index + 1}</span>
+                          <h4 className="font-bold text-slate-800 text-sm group-hover:text-purple-600 transition-colors mt-0.5 truncate pr-4">
+                            {video.title}
+                          </h4>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-xs text-slate-500 font-medium bg-slate-50 border border-slate-100 px-3 py-1 rounded-full">
+                          {video.duration || '15 min'}
+                        </span>
+                        <span className="text-xs font-bold text-purple-600 group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
+                          Play <ArrowRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // If activeVideo is NOT null, render the standard Lecture Room video player!
+    const currentPlayingVideo = activeVideo;
     const embedUrl = currentPlayingVideo?.url || 'https://www.youtube.com/embed/dQw4w9WgXcQ';
 
     return (
@@ -2678,12 +2804,12 @@ const StudentDashboard = ({
           <div className="flex items-center gap-3">
             <button 
               onClick={() => {
-                setActiveLectureCourse(null);
+                // Clicking back takes us back to the Syllabus view (setting activeVideo to null)!
                 setActiveVideo(null);
               }}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg transition-all"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
             >
-              ← Back to Portal
+              ← Back to Syllabus
             </button>
             <div>
               <h2 className="font-bold text-lg text-white">{activeLectureCourse.title}</h2>
@@ -7082,6 +7208,10 @@ function App() {
             course={selectedCourse} 
             onBack={() => handleNavigate('courses')}
             onEnroll={handleEnroll}
+            onResume={(course) => {
+              setAutoOpenCourse(course);
+              setCurrentPage('student-dashboard');
+            }}
           />
           <Footer />
         </div>
