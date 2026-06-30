@@ -1533,6 +1533,7 @@ const AdminLoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                   className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-indigo-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/50 transition-all"
                   placeholder="admin@sop.org"
                   required
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -1548,6 +1549,7 @@ const AdminLoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                   className="w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-indigo-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/50 transition-all"
                   placeholder="••••••••"
                   required
+                  autoComplete="off"
                 />
                 <button
                   type="button"
@@ -1681,6 +1683,7 @@ const LoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                   className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="you@example.com"
                   required
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -1696,6 +1699,7 @@ const LoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="••••••••"
                   required
+                  autoComplete="off"
                 />
                 <button
                   type="button"
@@ -1853,6 +1857,7 @@ const SignupPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                   className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="John Doe"
                   required
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -1868,6 +1873,7 @@ const SignupPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                   className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="you@example.com"
                   required
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -1884,6 +1890,7 @@ const SignupPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
                   placeholder="••••••••"
                   required
                   minLength={8}
+                  autoComplete="off"
                 />
               </div>
             </div>
