@@ -6957,7 +6957,7 @@ function App() {
   };
 
   const renderCheckoutModal = () => {
-    if (!checkoutCourse) return null;
+    if (!checkoutCourse || !user) return null;
     const finalPrice = checkoutCourse.price - discount;
 
     return (
@@ -7213,6 +7213,7 @@ function App() {
               setCurrentPage('student-dashboard');
             }}
           />
+          {renderCheckoutModal()}
           <Footer />
         </div>
       </AuthContext.Provider>
@@ -7240,7 +7241,7 @@ function App() {
             <PricingPage />
           )}
         </main>
-
+        {renderCheckoutModal()}
         <Footer />
       </div>
     </AuthContext.Provider>
