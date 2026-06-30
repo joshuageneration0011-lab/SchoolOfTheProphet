@@ -292,6 +292,21 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
                 {item}
               </button>
             ))}
+            {/* Return to Dashboard pill — only shown to logged-in users on the course browsing pages */}
+            {user && (currentPage === 'courses' || currentPage === 'course-detail') && (
+              <motion.button
+                onClick={() => onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard')}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400/20 to-orange-500/20 hover:from-amber-400/30 hover:to-orange-500/30 border border-amber-400/40 hover:border-amber-400/70 text-amber-300 hover:text-amber-200 text-sm font-bold rounded-xl transition-all shadow-lg shadow-amber-500/10 hover:shadow-amber-500/25"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                My Dashboard
+                <ArrowRight className="w-3.5 h-3.5" />
+              </motion.button>
+            )}
           </nav>
 
 
@@ -379,6 +394,22 @@ const Header = ({ onNavigate, currentPage }: { onNavigate: (page: string) => voi
                 <div className="pt-4 border-t border-white/10 flex flex-col gap-3">
                   {user ? (
                     <>
+                      {/* Prominent Return-to-Dashboard CTA on mobile when browsing courses */}
+                      {(currentPage === 'courses' || currentPage === 'course-detail') && (
+                        <button
+                          onClick={() => {
+                            onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard');
+                            setMobileMenuOpen(false);
+                          }}
+                          className="flex items-center justify-between gap-2 px-4 py-3 bg-gradient-to-r from-amber-400/20 to-orange-500/20 border border-amber-400/40 text-amber-300 text-sm font-bold rounded-xl transition-all"
+                        >
+                          <span className="flex items-center gap-2">
+                            <LayoutDashboard className="w-4 h-4" />
+                            Return to My Dashboard
+                          </span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           onNavigate(user.role === 'admin' || user.role === 'instructor' ? 'admin-dashboard' : 'student-dashboard');
