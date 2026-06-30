@@ -9,7 +9,7 @@ import {
   ArrowRight, PlayCircle, BarChart3, Bell,
   Filter, Grid, List, Mail, Phone, MapPin, Lock, Eye, LayoutDashboard,
   CreditCard, ClipboardList, MessageSquare, Trash,
-  Radio, FileCheck, UserCheck, Tag, History, Wifi, Copy, Calendar, Send, Plus
+  Radio, FileCheck, UserCheck, Tag, History, Wifi, Copy, Calendar, Send, Plus, Printer
 } from 'lucide-react';
 
 // Types
@@ -595,8 +595,9 @@ const CourseCard = ({ course, onClick }: { course: Course; onClick: () => void }
 };
 
 // Pages
-const HomePage = ({ onNavigate, onSelectCourse }: { onNavigate: (page: string) => void, onSelectCourse: (course: Course) => void }) => {
-  const featuredCourses = mockCourses.filter(c => c.isFeatured);
+const HomePage = ({ courses, onNavigate, onSelectCourse }: { courses: Course[], onNavigate: (page: string) => void, onSelectCourse: (course: Course) => void }) => {
+  const activeCourses = courses && courses.length > 0 ? courses : mockCourses;
+  const featuredCourses = activeCourses.filter(c => c.isFeatured || c.rating >= 4.8 || c.id === '1');
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   return (
@@ -1070,14 +1071,16 @@ const HomePage = ({ onNavigate, onSelectCourse }: { onNavigate: (page: string) =
   );
 };
 
-const CoursesPage = ({ onSelectCourse }: { onSelectCourse: (course: Course) => void }) => {
+const CoursesPage = ({ courses, onSelectCourse }: { courses: Course[], onSelectCourse: (course: Course) => void }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('popular');
 
+  const activeCourses = courses && courses.length > 0 ? courses : mockCourses;
+
   const filteredCourses = selectedCategory === 'All' 
-    ? mockCourses 
-    : mockCourses.filter(c => c.category === selectedCategory);
+    ? activeCourses 
+    : activeCourses.filter(c => c.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50 to-purple-50 py-8 lg:py-12">
@@ -1616,7 +1619,7 @@ const AdminLoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) 
   );
 };
 
-const LoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+const LoginPage = ({ onNavigate, checkoutCourse }: { onNavigate: (page: string) => void; checkoutCourse?: Course | null }) => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [_password, setPassword] = useState('');
@@ -1637,6 +1640,174 @@ const LoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
     }
   };
 
+  const renderFormContent = () => (
+    <>
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/30">
+          <BookOpen className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 bg-clip-text text-transparent mb-2">Welcome Back</h1>
+        <p className="text-gray-600">Sign in to continue learning</p>
+      </div>
+
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-5 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700"
+          >
+            <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <X className="w-4 h-4 text-red-700" />
+            </div>
+            <p className="text-xs font-semibold">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(''); }}
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="you@example.com"
+              required
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={_password}
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
+              className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="••••••••"
+              required
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2"
+            >
+              <Eye className={`w-5 h-5 transition-colors ${showPassword ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+            <span className="text-sm text-gray-600">Remember me</span>
+          </label>
+          <button type="button" className="text-sm text-purple-600 font-medium hover:text-purple-700">
+            Forgot password?
+          </button>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="submit"
+          disabled={isLoading}
+          className="w-full py-4 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600 text-slate-900 font-semibold rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-xl disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isLoading ? (
+            <>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full"
+              />
+              <span>Authenticating...</span>
+            </>
+          ) : (
+            <span>Sign In</span>
+          )}
+        </motion.button>
+      </form>
+
+      {/* Credentials hint */}
+      <div className="mt-6 p-4 bg-purple-50/50 border border-purple-100 rounded-2xl">
+        <p className="text-purple-950 text-xs font-semibold mb-2 flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
+          Demo Roles Credentials
+        </p>
+        <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-700">
+          <div>
+            <span className="font-bold text-gray-900 block">Student</span>
+            <span className="font-mono text-purple-700 block">student@sop.org</span>
+            <span className="text-[9px] text-gray-500 font-semibold">Pass: student123</span>
+          </div>
+          <div>
+            <span className="font-bold text-gray-900 block">Instructor</span>
+            <span className="font-mono text-purple-700 block">instructor@sop.org</span>
+            <span className="text-[9px] text-gray-500 font-semibold">Pass: instructor123</span>
+          </div>
+          <div>
+            <span className="font-bold text-gray-900 block">Admin</span>
+            <span className="font-mono text-purple-700 block">admin@sop.org</span>
+            <span className="text-[9px] text-gray-500 font-semibold">Pass: admin123</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-4 bg-white text-gray-500">Or continue with</span>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Google</span>
+          </button>
+          <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+            <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Facebook</span>
+          </button>
+        </div>
+      </div>
+
+      <p className="mt-8 text-center text-gray-600">
+        Don't have an account?{' '}
+        <button onClick={() => onNavigate('signup')} className="text-purple-600 font-semibold hover:text-purple-700">
+          Sign up
+        </button>
+      </p>
+
+      <p className="mt-4 text-center text-gray-500 text-sm">
+        Are you an administrator?{' '}
+        <button onClick={() => onNavigate('admin-login')} className="text-amber-600 font-semibold hover:text-amber-700">
+          Admin Portal
+        </button>
+      </p>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl"></div>
@@ -1644,179 +1815,77 @@ const LoginPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className={`w-full ${checkoutCourse ? 'max-w-4xl' : 'max-w-md'}`}
       >
-        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 lg:p-10 border border-white/20">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/30">
-              <BookOpen className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 bg-clip-text text-transparent mb-2">Welcome Back</h1>
-            <p className="text-gray-600">Sign in to continue learning</p>
-          </div>
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/20">
+          {checkoutCourse ? (
+            <div className="grid md:grid-cols-2">
+              {/* Left Column: Course Preview */}
+              <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-8 lg:p-10 text-white flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10">
+                <div>
+                  <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                    Securing Enrollment
+                  </span>
+                  <h2 className="text-2xl lg:text-3xl font-extrabold text-white mt-4 mb-3 leading-tight">
+                    {checkoutCourse.title}
+                  </h2>
+                  <p className="text-indigo-200 text-sm mb-6">
+                    by <span className="font-bold text-amber-300">{checkoutCourse.instructor}</span>
+                  </p>
+                  
+                  {/* Course Quick Specs */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Clock className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.duration} of content</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <BookOpen className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.lessons} lessons</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Award className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.level} track</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span>{checkoutCourse.rating} rating</span>
+                    </div>
+                  </div>
 
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-5 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700"
-              >
-                <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                  <X className="w-4 h-4 text-red-700" />
+                  {/* Thumbnail / Image Card */}
+                  <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-lg mb-6">
+                    <img src={checkoutCourse.thumbnail} alt={checkoutCourse.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
+                      <span className="text-xl font-black text-amber-400">₦{checkoutCourse.price.toLocaleString()}</span>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs font-semibold">{error}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="you@example.com"
-                  required
-                  autoComplete="off"
-                />
+                <div className="pt-6 border-t border-white/10 mt-6 md:mt-0">
+                  <p className="text-xs text-indigo-200/70 font-medium leading-relaxed">
+                    Sign in to your student account to complete checkout. You'll gain immediate lifetime access to the video lectures, assignments, and mentorship.
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Column: Form */}
+              <div className="p-8 lg:p-10 flex flex-col justify-center">
+                {renderFormContent()}
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={_password}
-                  onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                  className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="••••••••"
-                  required
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2"
-                >
-                  <Eye className={`w-5 h-5 transition-colors ${showPassword ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'}`} />
-                </button>
-              </div>
+          ) : (
+            <div className="p-8 lg:p-10">
+              {renderFormContent()}
             </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
-                <span className="text-sm text-gray-600">Remember me</span>
-              </label>
-              <button type="button" className="text-sm text-purple-600 font-medium hover:text-purple-700">
-                Forgot password?
-              </button>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-4 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600 text-slate-900 font-semibold rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-xl disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full"
-                  />
-                  <span>Authenticating...</span>
-                </>
-              ) : (
-                <span>Sign In</span>
-              )}
-            </motion.button>
-          </form>
-
-          {/* Credentials hint */}
-          <div className="mt-6 p-4 bg-purple-50/50 border border-purple-100 rounded-2xl">
-            <p className="text-purple-950 text-xs font-semibold mb-2 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
-              Demo Roles Credentials
-            </p>
-            <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-700">
-              <div>
-                <span className="font-bold text-gray-900 block">Student</span>
-                <span className="font-mono text-purple-700 block">student@sop.org</span>
-                <span className="text-[9px] text-gray-500 font-semibold">Pass: student123</span>
-              </div>
-              <div>
-                <span className="font-bold text-gray-900 block">Instructor</span>
-                <span className="font-mono text-purple-700 block">instructor@sop.org</span>
-                <span className="text-[9px] text-gray-500 font-semibold">Pass: instructor123</span>
-              </div>
-              <div>
-                <span className="font-bold text-gray-900 block">Admin</span>
-                <span className="font-mono text-purple-700 block">admin@sop.org</span>
-                <span className="text-[9px] text-gray-500 font-semibold">Pass: admin123</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">Or continue with</span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                <span className="text-sm font-medium text-gray-700">Google</span>
-              </button>
-              <button className="flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                <span className="text-sm font-medium text-gray-700">Facebook</span>
-              </button>
-            </div>
-          </div>
-
-          <p className="mt-8 text-center text-gray-600">
-            Don't have an account?{' '}
-            <button onClick={() => onNavigate('signup')} className="text-purple-600 font-semibold hover:text-purple-700">
-              Sign up
-            </button>
-          </p>
-
-          <p className="mt-4 text-center text-gray-500 text-sm">
-            Are you an administrator?{' '}
-            <button onClick={() => onNavigate('admin-login')} className="text-amber-600 font-semibold hover:text-amber-700">
-              Admin Portal
-            </button>
-          </p>
+          )}
         </div>
       </motion.div>
     </div>
   );
 };
 
-const SignupPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+const SignupPage = ({ onNavigate, checkoutCourse }: { onNavigate: (page: string) => void; checkoutCourse?: Course | null }) => {
   const { signup } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -1827,6 +1896,92 @@ const SignupPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
     signup(name, email, _password);
   };
 
+  const renderFormContent = () => (
+    <>
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/30">
+          <BookOpen className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 bg-clip-text text-transparent mb-2">Create Account</h1>
+        <p className="text-gray-600">Start your learning journey today</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+          <div className="relative">
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="John Doe"
+              required
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="you@example.com"
+              required
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="password"
+              value={_password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="••••••••"
+              required
+              minLength={8}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <input type="checkbox" className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 mt-1" required />
+          <p className="text-sm text-gray-600">
+            I agree to the <a href="#" className="text-purple-600 font-medium">Terms of Service</a> and <a href="#" className="text-purple-600 font-medium">Privacy Policy</a>
+          </p>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="submit"
+          className="w-full py-4 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600 text-slate-900 font-semibold rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-xl"
+        >
+          Create Account
+        </motion.button>
+      </form>
+
+      <p className="mt-8 text-center text-gray-600">
+        Already have an account?{' '}
+        <button onClick={() => onNavigate('login')} className="text-purple-600 font-semibold hover:text-purple-700">
+          Sign in
+        </button>
+      </p>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl"></div>
@@ -1834,98 +1989,475 @@ const SignupPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className={`w-full ${checkoutCourse ? 'max-w-4xl' : 'max-w-md'}`}
       >
-        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 lg:p-10 border border-white/20">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/30">
-              <BookOpen className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 bg-clip-text text-transparent mb-2">Create Account</h1>
-            <p className="text-gray-600">Start your learning journey today</p>
-          </div>
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/20">
+          {checkoutCourse ? (
+            <div className="grid md:grid-cols-2">
+              {/* Left Column: Course Preview */}
+              <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-8 lg:p-10 text-white flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10">
+                <div>
+                  <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                    Securing Enrollment
+                  </span>
+                  <h2 className="text-2xl lg:text-3xl font-extrabold text-white mt-4 mb-3 leading-tight">
+                    {checkoutCourse.title}
+                  </h2>
+                  <p className="text-indigo-200 text-sm mb-6">
+                    by <span className="font-bold text-amber-300">{checkoutCourse.instructor}</span>
+                  </p>
+                  
+                  {/* Course Quick Specs */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Clock className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.duration} of content</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <BookOpen className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.lessons} lessons</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Award className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.level} track</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span>{checkoutCourse.rating} rating</span>
+                    </div>
+                  </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="John Doe"
-                  required
-                  autoComplete="off"
-                />
+                  {/* Thumbnail / Image Card */}
+                  <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-lg mb-6">
+                    <img src={checkoutCourse.thumbnail} alt={checkoutCourse.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
+                      <span className="text-xl font-black text-amber-400">₦{checkoutCourse.price.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-white/10 mt-6 md:mt-0">
+                  <p className="text-xs text-indigo-200/70 font-medium leading-relaxed">
+                    Create your student account to complete checkout. You'll gain immediate lifetime access to the video lectures, assignments, and mentorship.
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Column: Form */}
+              <div className="p-8 lg:p-10 flex flex-col justify-center">
+                {renderFormContent()}
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="you@example.com"
-                  required
-                  autoComplete="off"
-                />
-              </div>
+          ) : (
+            <div className="p-8 lg:p-10">
+              {renderFormContent()}
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  value={_password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="••••••••"
-                  required
-                  minLength={8}
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <input type="checkbox" className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 mt-1" required />
-              <p className="text-sm text-gray-600">
-                I agree to the <a href="#" className="text-purple-600 font-medium">Terms of Service</a> and <a href="#" className="text-purple-600 font-medium">Privacy Policy</a>
-              </p>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              className="w-full py-4 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600 text-slate-900 font-semibold rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-xl"
-            >
-              Create Account
-            </motion.button>
-          </form>
-
-          <p className="mt-8 text-center text-gray-600">
-            Already have an account?{' '}
-            <button onClick={() => onNavigate('login')} className="text-purple-600 font-semibold hover:text-purple-700">
-              Sign in
-            </button>
-          </p>
+          )}
         </div>
       </motion.div>
     </div>
   );
 };
 
-const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => void }) => {
+const CheckoutAuthPage = ({
+  checkoutCourse,
+  onNavigate,
+  onSuccess
+}: {
+  checkoutCourse: Course;
+  onNavigate: (page: string) => void;
+  onSuccess: (user: User) => void;
+}) => {
+  const { signup, login } = useAuth();
+  const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
+  
+  // Account Form states
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  // Checkout states
+  const [couponCode, setCouponCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank'>('card');
+  
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const finalPrice = checkoutCourse.price - discount;
+
+  const handleApplyCoupon = () => {
+    if (!couponCode) return;
+    const code = couponCode.toUpperCase().trim();
+    if (code === 'PROPHETIC10') {
+      setDiscount(Math.round(checkoutCourse.price * 0.1));
+      setAppliedCoupon(code);
+    } else if (code === 'PRAYER50') {
+      setDiscount(Math.min(checkoutCourse.price, 5000));
+      setAppliedCoupon(code);
+    } else {
+      alert('Invalid or expired coupon code.');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      let authenticatedUser: User;
+      
+      // Step 1: Account Authentication/Creation
+      if (authMode === 'signup') {
+        if (!name.trim()) {
+          throw new Error('Please enter your full name');
+        }
+        authenticatedUser = await api.auth.signup(name, email, password);
+      } else {
+        authenticatedUser = await api.auth.login(email, password);
+      }
+
+      // Step 2: Payment processing
+      try {
+        await api.transactions.create({
+          student: authenticatedUser.name,
+          course: checkoutCourse.title,
+          amount: finalPrice
+        });
+        alert(`Account configured & enrolled in ${checkoutCourse.title} successfully!`);
+        onSuccess(authenticatedUser);
+      } catch (payErr) {
+        console.error('Payment failed after account creation:', payErr);
+        alert('Your account was created successfully, but payment failed. You can complete enrollment from your new dashboard.');
+        onSuccess(authenticatedUser);
+      }
+
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed. Please verify your details.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
+      
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-4xl"
+      >
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/20">
+          <div className="grid md:grid-cols-2">
+            
+            {/* Left Column: Course Preview Card */}
+            <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-8 lg:p-10 text-white flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10">
+              <div>
+                <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                  Secure Guest Checkout
+                </span>
+                <h2 className="text-2xl lg:text-3xl font-extrabold text-white mt-4 mb-3 leading-tight">
+                  {checkoutCourse.title}
+                </h2>
+                <p className="text-indigo-200 text-sm mb-6">
+                  by <span className="font-bold text-amber-300">{checkoutCourse.instructor}</span>
+                </p>
+                
+                {/* Course specs */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                    <Clock className="w-4 h-4 text-purple-400" />
+                    <span>{checkoutCourse.duration} of content</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                    <BookOpen className="w-4 h-4 text-purple-400" />
+                    <span>{checkoutCourse.lessons} lessons</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                    <Award className="w-4 h-4 text-purple-400" />
+                    <span>{checkoutCourse.level} track</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    <span>{checkoutCourse.rating} rating</span>
+                  </div>
+                </div>
+
+                {/* Course thumbnail image */}
+                <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-lg mb-6">
+                  <img src={checkoutCourse.thumbnail} alt={checkoutCourse.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
+                    <span className="text-xl font-black text-amber-400">₦{checkoutCourse.price.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-white/10 mt-6 md:mt-0">
+                <p className="text-xs text-indigo-200/70 font-medium leading-relaxed">
+                  Enter your credentials and payment details to enroll. Creating your account takes just seconds, and you will gain immediate, lifetime access to the active lecture room.
+                </p>
+              </div>
+            </div>
+
+            {/* Right Column: Unified Form */}
+            <div className="p-8 lg:p-10 flex flex-col justify-between max-h-[90vh] overflow-y-auto">
+              <div>
+                
+                {/* Unified Header */}
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-500/30">
+                    <BookOpen className="w-6 h-6 text-white" />
+                  </div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 bg-clip-text text-transparent">
+                    Secure Enrollment Portal
+                  </h1>
+                </div>
+
+                {/* Switcher Tab */}
+                <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
+                  <button
+                    type="button"
+                    onClick={() => { setAuthMode('signup'); setError(''); }}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      authMode === 'signup' 
+                        ? 'bg-white text-gray-900 shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    Create Account & Pay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAuthMode('login'); setError(''); }}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      authMode === 'login' 
+                        ? 'bg-white text-gray-900 shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    Sign In & Pay
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700"
+                    >
+                      <X className="w-4 h-4 text-red-700 flex-shrink-0" />
+                      <p className="text-xs font-semibold">{error}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Main Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  
+                  {/* Account credentials */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Account Credentials</h3>
+                    
+                    {authMode === 'signup' && (
+                      <div>
+                        <div className="relative">
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="Full Name"
+                            required
+                            autoComplete="off"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="Email Address"
+                          required
+                          autoComplete="off"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="Password"
+                          required
+                          minLength={8}
+                          autoComplete="off"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Details */}
+                  <div className="space-y-3 pt-2">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Method</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                          paymentMethod === 'card' 
+                            ? 'border-purple-600 bg-purple-50/50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <CreditCard className={`w-4 h-4 ${paymentMethod === 'card' ? 'text-purple-600' : 'text-gray-400'}`} />
+                        <span className="text-xs font-bold text-gray-800">Debit Card</span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('bank')}
+                        className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                          paymentMethod === 'bank' 
+                            ? 'border-purple-600 bg-purple-50/50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <BookOpen className={`w-4 h-4 ${paymentMethod === 'bank' ? 'text-purple-600' : 'text-gray-400'}`} />
+                        <span className="text-xs font-bold text-gray-800">Bank Transfer</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Coupon section */}
+                  <div className="space-y-1.5 pt-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Coupon Code</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter Code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-600 uppercase font-mono"
+                        disabled={!!appliedCoupon}
+                      />
+                      {appliedCoupon ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliedCoupon('');
+                            setDiscount(0);
+                            setCouponCode('');
+                          }}
+                          className="px-3 py-2 bg-red-50 text-red-600 text-xs font-semibold rounded-xl border border-red-100"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold rounded-xl"
+                        >
+                          Apply
+                        </button>
+                      )}
+                    </div>
+                    {appliedCoupon && (
+                      <p className="text-[10px] text-green-600 font-semibold">
+                        ✓ Discount Applied!
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Pricing break-down */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2 text-xs text-gray-600">
+                    <div className="flex justify-between">
+                      <span>Tuition Fee</span>
+                      <span className="font-semibold text-gray-900">₦{checkoutCourse.price.toLocaleString()}</span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex justify-between text-green-600 font-medium">
+                        <span>Discount Coupon</span>
+                        <span>-₦{discount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-gray-200 pt-2 text-sm font-black text-gray-900">
+                      <span>Amount to Pay</span>
+                      <span className="text-purple-600">₦{finalPrice.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Primary submit action */}
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-3.5 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600 text-slate-900 font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-xl disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Processing registration & payment...</span>
+                      </>
+                    ) : (
+                      <span>Complete Enrollment & Pay (₦{finalPrice.toLocaleString()})</span>
+                    )}
+                  </motion.button>
+                </form>
+
+              </div>
+
+              {/* Bottom switches */}
+              <div className="pt-6 border-t border-gray-100 mt-6 flex justify-between text-xs text-gray-500">
+                <button type="button" onClick={() => onNavigate('home')} className="hover:text-purple-600 font-semibold">
+                  ← Back to Home
+                </button>
+                
+                <span className="text-slate-400">|</span>
+                
+                <button type="button" onClick={() => onNavigate('courses')} className="hover:text-purple-600 font-semibold">
+                  Browse Catalog
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const StudentDashboard = ({ 
+  onCheckout,
+  initialActiveCourse,
+  onClearInitialActiveCourse
+}: { 
+  onCheckout?: (course: Course) => void;
+  initialActiveCourse?: Course | null;
+  onClearInitialActiveCourse?: () => void;
+}) => {
   const { user } = useAuth();
+  const [printCert, setPrintCert] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'assignments' | 'mentorship' | 'certificates' | 'support' | 'scholarships'>('overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1944,6 +2476,16 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
   // Active sub-views
   const [activeLectureCourse, setActiveLectureCourse] = useState<Course | null>(null);
   const [activeVideo, setActiveVideo] = useState<any>(null);
+
+  useEffect(() => {
+    if (initialActiveCourse) {
+      setActiveLectureCourse(initialActiveCourse);
+      setActiveVideo(null);
+      if (onClearInitialActiveCourse) {
+        onClearInitialActiveCourse();
+      }
+    }
+  }, [initialActiveCourse]);
   const [selectedLectureTab, setSelectedLectureTab] = useState<'details' | 'materials' | 'requirements'>('details');
 
   // Form states
@@ -2959,14 +3501,18 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
                             <Copy className="w-3.5 h-3.5" />
                             <span>Copy Verifier Link</span>
                           </button>
-                          <a
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); alert('Certificate PDF printing simulation started.'); }}
+                          <button
+                            onClick={() => {
+                              setPrintCert(cert);
+                              setTimeout(() => {
+                                window.print();
+                              }, 300);
+                            }}
                             className="flex-1 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5"
                           >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>Download PDF</span>
-                          </a>
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Print Certificate</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -3136,7 +3682,64 @@ const StudentDashboard = ({ onCheckout }: { onCheckout?: (course: Course) => voi
               </div>
             </div>
           )}
+      {printCert && (
+        <div id="certificate-print-area" className="hidden print:flex flex-col items-center justify-center p-12 bg-white text-slate-900 border-[16px] border-double border-amber-600 rounded-3xl max-w-4xl mx-auto shadow-2xl relative overflow-hidden" style={{ minHeight: '600px', fontFamily: "'Cinzel', 'Playfair Display', 'Georgia', serif" }}>
+          {/* Watermark/Background decoration */}
+          <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-center">
+            <svg className="w-[500px] h-[500px] text-amber-600" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/>
+            </svg>
+          </div>
+          
+          <div className="text-center space-y-6 z-10 w-full">
+            <div className="flex justify-center mb-2">
+              <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center shadow-md">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+            </div>
 
+            <h1 className="text-4xl font-extrabold tracking-widest text-slate-800 uppercase" style={{ letterSpacing: '4px' }}>School of the Prophets</h1>
+            <p className="text-sm font-semibold tracking-wider text-amber-600 uppercase">Academy Graduation Credential</p>
+            
+            <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto my-4"></div>
+
+            <p className="text-sm italic text-slate-500 my-2">This is to certify that</p>
+            <h2 className="text-3xl font-bold text-slate-900 border-b border-gray-200 pb-2 max-w-lg mx-auto italic" style={{ fontFamily: "Playfair Display, Georgia, serif" }}>
+              {printCert.student || user?.name}
+            </h2>
+
+            <p className="text-sm text-slate-650 max-w-xl mx-auto leading-relaxed my-2">
+              has successfully completed all required modules of the spiritual training curriculum and academic examinations for the course
+            </p>
+            <h3 className="text-xl font-bold text-slate-800 tracking-wide">
+              {printCert.course}
+            </h3>
+
+            <p className="text-sm font-semibold text-indigo-700 font-mono my-1">
+              Final Grade: {printCert.grade}
+            </p>
+
+            <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto my-4"></div>
+            
+            <div className="flex justify-between items-end mt-12 px-12">
+              <div className="text-center w-48 border-t border-slate-300 pt-2">
+                <p className="text-xs font-semibold text-slate-700">Prophet Elijah Mensah</p>
+                <p className="text-[10px] text-slate-500">Presiding Dean</p>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-[9px] text-slate-400 font-mono mb-1">Code: {printCert.id}</span>
+                <span className="text-[9px] text-slate-400 font-mono">Date: {printCert.completionDate || new Date().toLocaleDateString()}</span>
+              </div>
+              <div className="text-center w-48 border-t border-slate-300 pt-2">
+                <p className="text-xs font-semibold text-slate-700">Academic Registry</p>
+                <p className="text-[10px] text-slate-500">SOP Authority Seal</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
         </div>
       </div>
     </div>
@@ -3170,6 +3773,10 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
   const [videoTitle, setVideoTitle] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [videoDuration, setVideoDuration] = useState('');
+  const [videoSource, setVideoSource] = useState<'url' | 'file'>('url');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
 
   // Admin users list state
@@ -3275,18 +3882,55 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
     refreshDashboardData();
   }, []);
 
-  const handleAddVideoLecture = () => {
-    if (!videoTitle || !videoUrl) return;
-    const newVideo = {
-      id: String(addedVideos.length + 1),
-      title: videoTitle,
-      url: videoUrl,
-      duration: videoDuration || '15 min',
-    };
-    setAddedVideos([...addedVideos, newVideo]);
-    setVideoTitle('');
-    setVideoUrl('');
-    setVideoDuration('');
+  const handleAddVideoLecture = async () => {
+    if (!videoTitle) return;
+
+    if (videoSource === 'file') {
+      if (!videoFile) {
+        setUploadError('Please select a video file.');
+        return;
+      }
+      if (videoFile.size > 100 * 1024 * 1024) {
+        setUploadError('File exceeds the 100MB size limit.');
+        return;
+      }
+      setIsUploadingVideo(true);
+      setUploadError(null);
+      try {
+        const res = await api.upload.video(videoFile);
+        const newVideo = {
+          id: String(addedVideos.length + 1),
+          title: videoTitle,
+          url: res.url,
+          duration: videoDuration || '15 min',
+        };
+        setAddedVideos([...addedVideos, newVideo]);
+        setVideoTitle('');
+        setVideoFile(null);
+        setVideoDuration('');
+        
+        // Reset file input element manually
+        const fileInput = document.getElementById('video-file-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      } catch (err: any) {
+        console.error('Upload failed:', err);
+        setUploadError(err.message || 'Failed to upload video file.');
+      } finally {
+        setIsUploadingVideo(false);
+      }
+    } else {
+      if (!videoUrl) return;
+      const newVideo = {
+        id: String(addedVideos.length + 1),
+        title: videoTitle,
+        url: videoUrl,
+        duration: videoDuration || '15 min',
+      };
+      setAddedVideos([...addedVideos, newVideo]);
+      setVideoTitle('');
+      setVideoUrl('');
+      setVideoDuration('');
+    }
   };
 
   const handleRemoveVideoLecture = (id: string) => {
@@ -3454,7 +4098,12 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                   { id: 'promotions', label: 'Promos', icon: Tag },
                   { id: 'audit', label: 'Audit', icon: History },
                   { id: 'settings', label: 'Settings', icon: Settings },
-                ].map((item) => {
+                ].filter(item => {
+                  if (user?.role === 'instructor') {
+                    return ['overview', 'courses', 'assignments', 'mentorship'].includes(item.id);
+                  }
+                  return true;
+                }).map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   return (
@@ -3482,11 +4131,11 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
               <div className="border-t border-slate-800 pt-4 mt-auto">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-slate-900 font-semibold text-xs">
-                    A
+                    {user?.name?.charAt(0) || 'A'}
                   </div>
                   <div className="truncate">
-                    <div className="text-xs font-semibold text-white">System Admin</div>
-                    <div className="text-[10px] text-indigo-300 truncate">admin@sop.org</div>
+                    <div className="text-xs font-semibold text-white">{user?.name || 'System Admin'}</div>
+                    <div className="text-[10px] text-indigo-300 truncate">{user?.email || 'admin@sop.org'}</div>
                   </div>
                 </div>
               </div>
@@ -3524,7 +4173,12 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
               { id: 'promotions', label: 'Promos', icon: Tag },
               { id: 'audit', label: 'Audit', icon: History },
               { id: 'settings', label: 'Settings', icon: Settings },
-            ].map((item) => {
+            ].filter(item => {
+              if (user?.role === 'instructor') {
+                return ['overview', 'courses', 'assignments', 'mentorship'].includes(item.id);
+              }
+              return true;
+            }).map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -3552,11 +4206,11 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
         <div className="border-t border-slate-800 pt-4">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-8 h-8 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-slate-900 font-semibold text-xs">
-              A
+              {user?.name?.charAt(0) || 'A'}
             </div>
             <div className="truncate">
-              <div className="text-xs font-semibold text-white">System Admin</div>
-              <div className="text-[10px] text-indigo-300 truncate">admin@sop.org</div>
+              <div className="text-xs font-semibold text-white">{user?.name || 'System Admin'}</div>
+              <div className="text-[10px] text-indigo-300 truncate">{user?.email || 'admin@sop.org'}</div>
             </div>
           </div>
           <button 
@@ -3704,7 +4358,12 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                 <p className="text-gray-600">Add, update, or remove modules from the platform repository</p>
               </div>
               <button 
-                onClick={() => setCurrentCourseAction('create')}
+                onClick={() => {
+                  setCurrentCourseAction('create');
+                  if (user && user.role === 'instructor') {
+                    setNewInstructor(user.name);
+                  }
+                }}
                 className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-amber-500 text-white font-semibold rounded-xl shadow-lg flex items-center gap-2 text-sm"
               >
                 <Video className="w-4 h-4" />
@@ -3803,7 +4462,10 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                         value={newInstructor} 
                         onChange={(e) => setNewInstructor(e.target.value)}
                         placeholder="e.g. Prophet Elijah Mensah" 
-                        className="w-full p-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        disabled={user?.role === 'instructor'}
+                        className={`w-full p-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                          user?.role === 'instructor' ? 'opacity-70 cursor-not-allowed bg-gray-100' : ''
+                        }`}
                         required
                       />
                     </div>
@@ -3931,16 +4593,73 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                         className="w-full p-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Video Link (YouTube, Vimeo, etc.)</label>
-                      <input 
-                        type="text" 
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                        placeholder="https://www.youtube.com/watch?v=..." 
-                        className="w-full p-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+
+                    {/* Toggle between URL and File upload */}
+                    <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => { setVideoSource('url'); setUploadError(null); }}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                          videoSource === 'url' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-850'
+                        }`}
+                      >
+                        External Link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setVideoSource('file'); setUploadError(null); }}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                          videoSource === 'file' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-850'
+                        }`}
+                      >
+                        Upload Local File
+                      </button>
                     </div>
+
+                    {videoSource === 'url' ? (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Video Link (YouTube, Vimeo, etc.)</label>
+                        <input 
+                          type="text" 
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..." 
+                          className="w-full p-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Video File (Max 100MB)</label>
+                        <input 
+                          type="file" 
+                          id="video-file-input"
+                          accept="video/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 100 * 1024 * 1024) {
+                                setUploadError('File exceeds the 100MB size limit.');
+                                setVideoFile(null);
+                              } else {
+                                setUploadError(null);
+                                setVideoFile(file);
+                              }
+                            }
+                          }}
+                          className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                        />
+                        {videoFile && (
+                          <p className="text-[10px] text-green-600 font-semibold mt-1">
+                            Selected: {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB)
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {uploadError && (
+                      <p className="text-xs text-red-500 font-semibold">{uploadError}</p>
+                    )}
+
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Duration (e.g. 15m, 45m)</label>
                       <input 
@@ -3954,10 +4673,21 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
 
                     <button 
                       type="button"
+                      disabled={isUploadingVideo || (videoSource === 'file' && !videoFile)}
                       onClick={handleAddVideoLecture}
-                      className="w-full py-2 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 transition-colors text-sm"
+                      className="w-full py-2 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      Add Lecture
+                      {isUploadingVideo ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Uploading (Max 100MB)...
+                        </>
+                      ) : (
+                        'Add Lecture'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -5973,15 +6703,31 @@ function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   
   // Checkout Modal State
   const [checkoutCourse, setCheckoutCourse] = useState<Course | null>(null);
+  const [autoOpenCourse, setAutoOpenCourse] = useState<Course | null>(null);
   const [enrollmentTrigger, setEnrollmentTrigger] = useState(0);
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank'>('card');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  const fetchCoursesList = async () => {
+    try {
+      const data = await api.courses.list();
+      setCourses(data);
+    } catch (err) {
+      console.error('Failed to load courses from API:', err);
+      setCourses(mockCourses);
+    }
+  };
+
+  useEffect(() => {
+    fetchCoursesList();
+  }, [enrollmentTrigger]);
 
   const authContext: AuthContextType = {
     user,
@@ -6002,41 +6748,37 @@ function App() {
   };
 
   const handleNavigate = (page: string) => {
-    if ((page === 'courses' || page === 'course-detail') && !user) {
-      alert('Please log in to access courses.');
-      setCurrentPage('login');
-      return;
+    if (page === 'courses' || page === 'home') {
+      fetchCoursesList();
     }
     setCurrentPage(page);
     setSelectedCourse(null);
+    if (page !== 'login' && page !== 'signup' && page !== 'checkout-auth') {
+      setCheckoutCourse(null);
+    }
     window.scrollTo(0, 0);
   };
 
   const handleSelectCourse = (course: Course) => {
-    if (!user) {
-      alert('Please log in to access courses.');
-      setCurrentPage('login');
-      return;
-    }
     setSelectedCourse(course);
     setCurrentPage('course-detail');
     window.scrollTo(0, 0);
   };
 
   const handleEnroll = () => {
+    if (selectedCourse) {
+      setCheckoutCourse(selectedCourse);
+    }
+
     if (!user) {
-      alert('Please log in or create an account to enroll in this course.');
-      setCurrentPage('login');
+      setCurrentPage('checkout-auth');
       return;
     }
 
     if (user.role !== 'student') {
       alert('Only student accounts can enroll in courses.');
+      setCheckoutCourse(null);
       return;
-    }
-
-    if (selectedCourse) {
-      setCheckoutCourse(selectedCourse);
     }
   };
 
@@ -6070,12 +6812,15 @@ function App() {
           amount: finalPrice
         });
         alert(`Payment successful! Enrolled in ${checkoutCourse.title}.`);
+        
+        const purchasedCourse = checkoutCourse;
         setCheckoutCourse(null);
         setCouponCode('');
         setDiscount(0);
         setAppliedCoupon('');
         setPaymentMethod('card');
         setEnrollmentTrigger(prev => prev + 1);
+        setAutoOpenCourse(purchasedCourse);
         setCurrentPage('student-dashboard');
       } catch (err) {
         alert('Payment processing failed.');
@@ -6262,15 +7007,35 @@ function App() {
     );
   }
 
+  // Render Unified Checkout & Auth page
+  if (currentPage === 'checkout-auth' && checkoutCourse) {
+    return (
+      <AuthContext.Provider value={authContext}>
+        <Header onNavigate={handleNavigate} currentPage={currentPage} />
+        <CheckoutAuthPage
+          checkoutCourse={checkoutCourse}
+          onNavigate={handleNavigate}
+          onSuccess={(signedUser) => {
+            setUser(signedUser);
+            setAutoOpenCourse(checkoutCourse);
+            setCheckoutCourse(null);
+            setEnrollmentTrigger(prev => prev + 1);
+            setCurrentPage('student-dashboard');
+          }}
+        />
+      </AuthContext.Provider>
+    );
+  }
+
   // Render auth pages with header
   if (currentPage === 'login' || currentPage === 'signup') {
     return (
       <AuthContext.Provider value={authContext}>
         <Header onNavigate={handleNavigate} currentPage={currentPage} />
         {currentPage === 'login' ? (
-          <LoginPage onNavigate={handleNavigate} />
+          <LoginPage onNavigate={handleNavigate} checkoutCourse={checkoutCourse} />
         ) : (
-          <SignupPage onNavigate={handleNavigate} />
+          <SignupPage onNavigate={handleNavigate} checkoutCourse={checkoutCourse} />
         )}
       </AuthContext.Provider>
     );
@@ -6282,7 +7047,12 @@ function App() {
       <AuthContext.Provider value={authContext}>
         <div className="min-h-screen bg-gray-50">
           <Header onNavigate={handleNavigate} currentPage={currentPage} />
-          <StudentDashboard key={enrollmentTrigger} onCheckout={(course) => setCheckoutCourse(course)} />
+          <StudentDashboard 
+            key={enrollmentTrigger} 
+            onCheckout={(course) => setCheckoutCourse(course)} 
+            initialActiveCourse={autoOpenCourse}
+            onClearInitialActiveCourse={() => setAutoOpenCourse(null)}
+          />
           {renderCheckoutModal()}
         </div>
       </AuthContext.Provider>
@@ -6327,10 +7097,10 @@ function App() {
         
         <main>
           {currentPage === 'home' && (
-            <HomePage onNavigate={handleNavigate} onSelectCourse={handleSelectCourse} />
+            <HomePage courses={courses} onNavigate={handleNavigate} onSelectCourse={handleSelectCourse} />
           )}
           {currentPage === 'courses' && (
-            <CoursesPage onSelectCourse={handleSelectCourse} />
+            <CoursesPage courses={courses} onSelectCourse={handleSelectCourse} />
           )}
 
           {currentPage === 'about' && (

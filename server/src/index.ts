@@ -1,16 +1,60 @@
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5001;
 
+// Ensure uploads folder exists
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(uploadsDir));
+
+// Configure Multer storage and limits (100MB)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB
+  }
+});
 
 app.get('/api/test', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+app.post('/api/upload', upload.single('video'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file uploaded.' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.status(200).json({ url: fileUrl });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Helper to log audit actions

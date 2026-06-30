@@ -1,1 +1,34 @@
 @import "tailwindcss";
+
+@media print {
+  /* Hide every element on the page */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Except for the certificate print container and its descendants */
+  #certificate-print-area,
+  #certificate-print-area * {
+    visibility: visible;
+  }
+  
+  /* Position the certificate to fill the printable page */
+  #certificate-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 2rem;
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 16px double #d97706; /* amber-600 gold border */
+    background-color: #ffffff;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

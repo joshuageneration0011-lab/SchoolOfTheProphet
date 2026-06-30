@@ -210,5 +210,21 @@ export const api = {
           method: 'DELETE'
         })
     }
+  },
+  upload: {
+    video: (file: File) => {
+      const formData = new FormData();
+      formData.append('video', file);
+      return fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData
+      }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP error ${res.status}`);
+        }
+        return res.json();
+      });
+    }
   }
 };
