@@ -3148,6 +3148,11 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
   // ─── CERTIFICATES STATE ───
   const [certificatesList, setCertificatesList] = useState<any[]>([]);
   const [certVerifyQuery, setCertVerifyQuery] = useState('');
+  const [isIssueCertModalOpen, setIsIssueCertModalOpen] = useState(false);
+  const [issueCertStudent, setIssueCertStudent] = useState('');
+  const [issueCertCourse, setIssueCertCourse] = useState('');
+  const [issueCertGrade, setIssueCertGrade] = useState('A');
+  const [issueCertDate, setIssueCertDate] = useState('');
 
   // ─── MENTORSHIP STATE ───
   const [mentorshipGroups, setMentorshipGroups] = useState<any[]>([]);
@@ -4723,9 +4728,25 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
         {/* CERTIFICATES TAB */}
         {activeTab === 'certificates' && (
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Certificates & Registry</h1>
-              <p className="text-gray-600">Issue, revoke, and verify student training certificates of graduation</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Certificates & Registry</h1>
+                <p className="text-gray-600">Issue, revoke, and verify student training certificates of graduation</p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsIssueCertModalOpen(true);
+                  if (usersList.length > 0) setIssueCertStudent(usersList[0].name);
+                  if (coursesList.length > 0) setIssueCertCourse(coursesList[0].title);
+                  setIssueCertGrade("A");
+                  const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                  setIssueCertDate(todayStr);
+                }}
+                className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all self-start sm:self-auto shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Issue New Certificate</span>
+              </button>
             </div>
 
             {/* Quick Verifier */}
@@ -4868,6 +4889,140 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                 </table>
               </div>
             </div>
+
+            {/* Issue Certificate Modal */}
+            {isIssueCertModalOpen && (
+              <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-gray-100 shadow-2xl relative space-y-4">
+                  <button 
+                    onClick={() => setIsIssueCertModalOpen(false)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                  >
+                    ✕
+                  </button>
+                  
+                  <div>
+                    <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-bold">
+                      New Credential
+                    </span>
+                    <h3 className="text-lg font-bold text-gray-950 mt-2">Issue Graduation Certificate</h3>
+                    <p className="text-xs text-gray-500 mt-1">Select student graduand, course program, grade and date.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Student Select */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Student</label>
+                      <select
+                        value={issueCertStudent}
+                        onChange={(e) => setIssueCertStudent(e.target.value)}
+                        className="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        {usersList.map((user) => (
+                          <option key={user.id} value={user.name}>
+                            {user.name} ({user.role})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Course Select */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Course Program</label>
+                      <select
+                        value={issueCertCourse}
+                        onChange={(e) => setIssueCertCourse(e.target.value)}
+                        className="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        {coursesList.map((course) => (
+                          <option key={course.id} value={course.title}>
+                            {course.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Grade Select */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Grade</label>
+                        <select
+                          value={issueCertGrade}
+                          onChange={(e) => setIssueCertGrade(e.target.value)}
+                          className="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option>A+</option>
+                          <option>A</option>
+                          <option>A-</option>
+                          <option>B+</option>
+                          <option>B</option>
+                          <option>C</option>
+                          <option>Pass</option>
+                          <option>Distinction</option>
+                        </select>
+                      </div>
+
+                      {/* Completion Date */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Completion Date</label>
+                        <input
+                          type="text"
+                          value={issueCertDate}
+                          onChange={(e) => setIssueCertDate(e.target.value)}
+                          className="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="e.g. June 30, 2026"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-2 flex gap-2">
+                      <button
+                        onClick={() => setIsIssueCertModalOpen(false)}
+                        className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!issueCertStudent) {
+                            alert("Please select a student");
+                            return;
+                          }
+                          if (!issueCertCourse) {
+                            alert("Please select a course");
+                            return;
+                          }
+                          
+                          // Generate unique cert code: CERT-YYYY-XXXX
+                          const yearStr = new Date().getFullYear();
+                          const randomId = Math.floor(1000 + Math.random() * 9000);
+                          const certId = `CERT-${yearStr}-${randomId}`;
+
+                          try {
+                            await api.certificates.create({
+                              id: certId,
+                              student: issueCertStudent,
+                              course: issueCertCourse,
+                              completionDate: issueCertDate,
+                              grade: issueCertGrade
+                            });
+                            alert(`Certificate ${certId} issued successfully!`);
+                            setIsIssueCertModalOpen(false);
+                            await refreshDashboardData();
+                          } catch (err: any) {
+                            alert(`Error issuing certificate: ${err.message}`);
+                          }
+                        }}
+                        className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm"
+                      >
+                        Issue Certificate
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
 
