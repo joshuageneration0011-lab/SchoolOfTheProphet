@@ -2137,10 +2137,12 @@ const SignupPage = ({ onNavigate, checkoutCourse }: { onNavigate: (page: string)
 
 const CheckoutAuthPage = ({
   checkoutCourse,
+  checkoutAudio,
   onNavigate,
   onSuccess
 }: {
-  checkoutCourse: Course;
+  checkoutCourse?: Course | null;
+  checkoutAudio?: Audio | null;
   onNavigate: (page: string) => void;
   onSuccess: (user: User) => void;
 }) => {
@@ -2161,16 +2163,17 @@ const CheckoutAuthPage = ({
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const finalPrice = checkoutCourse.price - discount;
+  const originalPrice = checkoutCourse ? checkoutCourse.price : (checkoutAudio ? checkoutAudio.price : 0);
+  const finalPrice = originalPrice - discount;
 
   const handleApplyCoupon = () => {
     if (!couponCode) return;
     const code = couponCode.toUpperCase().trim();
     if (code === 'PROPHETIC10') {
-      setDiscount(Math.round(checkoutCourse.price * 0.1));
+      setDiscount(Math.round(originalPrice * 0.1));
       setAppliedCoupon(code);
     } else if (code === 'PRAYER50') {
-      setDiscount(Math.min(checkoutCourse.price, 5000));
+      setDiscount(Math.min(originalPrice, 5000));
       setAppliedCoupon(code);
     } else {
       alert('Invalid or expired coupon code.');
@@ -2197,13 +2200,27 @@ const CheckoutAuthPage = ({
 
       // Step 2: Payment processing
       try {
-        await api.transactions.create({
-          student: authenticatedUser.name,
-          course: checkoutCourse.title,
-          amount: finalPrice
-        });
-        alert(`Account configured & enrolled in ${checkoutCourse.title} successfully!`);
-        onSuccess(authenticatedUser);
+        if (checkoutCourse) {
+          await api.transactions.create({
+            student: authenticatedUser.name,
+            course: checkoutCourse.title,
+            amount: finalPrice
+          });
+          alert(`Account configured & enrolled in ${checkoutCourse.title} successfully!`);
+          onSuccess(authenticatedUser);
+        } else if (checkoutAudio) {
+          await api.transactions.create({
+            student: authenticatedUser.name,
+            course: checkoutAudio.title,
+            amount: finalPrice
+          });
+          await api.users.purchaseAudio(authenticatedUser.id, checkoutAudio.id);
+          // Update local user state
+          const updatedAudios = [...(authenticatedUser.purchasedAudios || []), checkoutAudio.id];
+          authenticatedUser = { ...authenticatedUser, purchasedAudios: updatedAudios };
+          alert(`Account configured & purchased "${checkoutAudio.title}" successfully!`);
+          onSuccess(authenticatedUser);
+        }
       } catch (payErr) {
         console.error('Payment failed after account creation:', payErr);
         alert('Your account was created successfully, but payment failed. You can complete enrollment from your new dashboard.');
@@ -2216,6 +2233,10 @@ const CheckoutAuthPage = ({
       setIsLoading(false);
     }
   };
+
+  const previewTitle = checkoutCourse ? checkoutCourse.title : (checkoutAudio ? checkoutAudio.title : '');
+  const previewSubtitle = checkoutCourse ? `by ${checkoutCourse.instructor}` : (checkoutAudio ? `by ${checkoutAudio.artist}` : '');
+  const previewThumbnail = checkoutCourse ? checkoutCourse.thumbnail : (checkoutAudio ? (checkoutAudio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop') : '');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
@@ -2230,51 +2251,67 @@ const CheckoutAuthPage = ({
         <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/20">
           <div className="grid md:grid-cols-2">
             
-            {/* Left Column: Course Preview Card */}
+            {/* Left Column: Product Preview Card */}
             <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-8 lg:p-10 text-white flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10">
               <div>
                 <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
                   Secure Guest Checkout
                 </span>
                 <h2 className="text-2xl lg:text-3xl font-extrabold text-white mt-4 mb-3 leading-tight">
-                  {checkoutCourse.title}
+                  {previewTitle}
                 </h2>
                 <p className="text-indigo-200 text-sm mb-6">
-                  by <span className="font-bold text-amber-300">{checkoutCourse.instructor}</span>
+                  {previewSubtitle}
                 </p>
                 
-                {/* Course specs */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
-                    <Clock className="w-4 h-4 text-purple-400" />
-                    <span>{checkoutCourse.duration} of content</span>
+                {/* Product specs */}
+                {checkoutCourse ? (
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Clock className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.duration} of content</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <BookOpen className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.lessons} lessons</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Award className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutCourse.level} track</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span>{checkoutCourse.rating} rating</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
-                    <BookOpen className="w-4 h-4 text-purple-400" />
-                    <span>{checkoutCourse.lessons} lessons</span>
+                ) : checkoutAudio ? (
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Clock className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutAudio.duration} total duration</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
+                      <Music className="w-4 h-4 text-purple-400" />
+                      <span>{checkoutAudio.tracks?.length || 0} track(s)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-indigo-100/80 text-xs col-span-2">
+                      <span className="text-[10px] bg-amber-400/20 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase">{checkoutAudio.category}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
-                    <Award className="w-4 h-4 text-purple-400" />
-                    <span>{checkoutCourse.level} track</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-indigo-100/80 text-xs">
-                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    <span>{checkoutCourse.rating} rating</span>
-                  </div>
-                </div>
+                ) : null}
 
-                {/* Course thumbnail image */}
-                <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-lg mb-6">
-                  <img src={checkoutCourse.thumbnail} alt={checkoutCourse.title} className="w-full h-full object-cover" />
+                {/* Product thumbnail image */}
+                <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-lg mb-6 bg-slate-900/50">
+                  <img src={previewThumbnail} alt={previewTitle} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
-                    <span className="text-xl font-black text-amber-400">₦{checkoutCourse.price.toLocaleString()}</span>
+                    <span className="text-xl font-black text-amber-400">₦{originalPrice.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-6 border-t border-white/10 mt-6 md:mt-0">
                 <p className="text-xs text-indigo-200/70 font-medium leading-relaxed">
-                  Enter your credentials and payment details to enroll. Creating your account takes just seconds, and you will gain immediate, lifetime access to the active lecture room.
+                  Enter your credentials and payment details to complete this purchase. Creating your account takes just seconds, and you will gain immediate, lifetime access to your library.
                 </p>
               </div>
             </div>
@@ -2286,10 +2323,10 @@ const CheckoutAuthPage = ({
                 {/* Unified Header */}
                 <div className="text-center mb-6">
                   <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-500/30">
-                    <BookOpen className="w-6 h-6 text-white" />
+                    {checkoutCourse ? <BookOpen className="w-6 h-6 text-white" /> : <Music className="w-6 h-6 text-white" />}
                   </div>
                   <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 bg-clip-text text-transparent">
-                    Secure Enrollment Portal
+                    {checkoutCourse ? 'Secure Enrollment Portal' : 'Secure Purchase Portal'}
                   </h1>
                 </div>
 
@@ -2465,8 +2502,8 @@ const CheckoutAuthPage = ({
                   {/* Pricing break-down */}
                   <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2 text-xs text-gray-600">
                     <div className="flex justify-between">
-                      <span>Tuition Fee</span>
-                      <span className="font-semibold text-gray-900">₦{checkoutCourse.price.toLocaleString()}</span>
+                      <span>{checkoutCourse ? 'Tuition Fee' : 'Product Price'}</span>
+                      <span className="font-semibold text-gray-900">₦{originalPrice.toLocaleString()}</span>
                     </div>
                     {discount > 0 && (
                       <div className="flex justify-between text-green-600 font-medium">
@@ -2494,7 +2531,7 @@ const CheckoutAuthPage = ({
                         <span>Processing registration & payment...</span>
                       </>
                     ) : (
-                      <span>Complete Enrollment & Pay (₦{finalPrice.toLocaleString()})</span>
+                      <span>{checkoutCourse ? 'Complete Enrollment' : 'Complete Purchase'} & Pay (₦{finalPrice.toLocaleString()})</span>
                     )}
                   </motion.button>
                 </form>
@@ -8143,9 +8180,8 @@ function App() {
   const handleAudioBuy = (audio: Audio) => {
     if (!user) {
       // Guest: set the audio as pending purchase then send to checkout-auth
-      // For now redirect to login with context
       setCheckoutAudio(audio);
-      setCurrentPage('login');
+      setCurrentPage('checkout-auth');
       return;
     }
     if (user.role !== 'student') {
@@ -8463,18 +8499,25 @@ function App() {
   }
 
   // Render Unified Checkout & Auth page
-  if (currentPage === 'checkout-auth' && checkoutCourse) {
+  if (currentPage === 'checkout-auth' && (checkoutCourse || checkoutAudio)) {
     return (
       <AuthContext.Provider value={authContext}>
         <Header onNavigate={handleNavigate} currentPage={currentPage} />
         <CheckoutAuthPage
           checkoutCourse={checkoutCourse}
+          checkoutAudio={checkoutAudio}
           onNavigate={handleNavigate}
           onSuccess={(signedUser) => {
             setUser(signedUser);
-            setAutoOpenCourse(checkoutCourse);
-            setCheckoutCourse(null);
-            setEnrollmentTrigger(prev => prev + 1);
+            if (checkoutCourse) {
+              setAutoOpenCourse(checkoutCourse);
+              setCheckoutCourse(null);
+              setEnrollmentTrigger(prev => prev + 1);
+            }
+            if (checkoutAudio) {
+              setCheckoutAudio(null);
+              fetchAudiosList(); // Refresh list to reflect purchase
+            }
             setCurrentPage('student-dashboard');
           }}
         />
