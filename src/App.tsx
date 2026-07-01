@@ -10,7 +10,7 @@ import {
   Filter, Grid, List, Mail, Phone, MapPin, Lock, Eye, LayoutDashboard,
   CreditCard, ClipboardList, MessageSquare, Trash,
   Radio, FileCheck, UserCheck, Tag, History, Wifi, Copy, Calendar, Send, Plus, Printer,
-  Headphones, Music, Volume2, Pause, SkipForward, SkipBack, ShoppingBag
+  Headphones, Music, Volume2, Pause, SkipForward, SkipBack, ShoppingBag, Upload
 } from 'lucide-react';
 
 // Types
@@ -57,7 +57,6 @@ interface Audio {
   title: string;
   artist: string;
   coverUrl: string;
-  audioUrl: string;
   description: string;
   category: string;
   duration: string;
@@ -67,6 +66,7 @@ interface Audio {
   plays: number;
   isFeatured?: boolean;
   isBestseller?: boolean;
+  tracks: { id: string; title: string; url: string; duration: string }[];
 }
 
 interface User {
@@ -798,7 +798,7 @@ const HomePage = ({ courses, onNavigate, onSelectCourse }: { courses: Course[], 
                         src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1"
                         title="SOP Academy — School of the Prophets Introduction"
                         className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allow="accelerometer; autoplay; clipboard-write; gyroscope; picture-in-picture"
                         allowFullScreen
                       ></iframe>
                     )}
@@ -2526,15 +2526,17 @@ const CheckoutAuthPage = ({
 const StudentDashboard = ({ 
   onCheckout,
   initialActiveCourse,
-  onClearInitialActiveCourse
+  onClearInitialActiveCourse,
+  onNavigate
 }: { 
-  onCheckout?: (course: Course) => void;
+  onCheckout?: (course: Course) => void; 
   initialActiveCourse?: Course | null;
   onClearInitialActiveCourse?: () => void;
+  onNavigate?: (page: string) => void;
 }) => {
   const { user } = useAuth();
   const [printCert, setPrintCert] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'assignments' | 'mentorship' | 'certificates' | 'support' | 'scholarships'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'student-audios' | 'assignments' | 'mentorship' | 'certificates' | 'support' | 'scholarships'>('overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -2548,6 +2550,109 @@ const StudentDashboard = ({
   const [scholarships, setScholarships] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [currentUserDetails, setCurrentUserDetails] = useState<any>(null);
+
+  // Audio Player State & Methods
+  const [purchasedAudios, setPurchasedAudios] = useState<Audio[]>([]);
+  const [isLoadingAudios, setIsLoadingAudios] = useState(false);
+  const [currentPlayingAudio, setCurrentPlayingAudio] = useState<Audio | null>(null);
+  const [currentPlayingTrackIndex, setCurrentPlayingTrackIndex] = useState<number>(0);
+  const [isAudioPlaying, setIsAudioPlaying] = useState<boolean>(false);
+  const [trackDuration, setTrackDuration] = useState<number>(0);
+  const [trackProgress, setTrackProgress] = useState<number>(0);
+  const [audioVolume, setAudioVolume] = useState<number>(0.8);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  const fetchPurchasedAudios = async () => {
+    setIsLoadingAudios(true);
+    try {
+      const allAudios = await api.audios.list();
+      const purchasedIds = user?.purchasedAudios || [];
+      const filtered = allAudios.filter((a: Audio) => purchasedIds.includes(a.id));
+      setPurchasedAudios(filtered);
+    } catch (err) {
+      console.error("Failed to fetch purchased audios:", err);
+    } finally {
+      setIsLoadingAudios(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'student-audios') {
+      fetchPurchasedAudios();
+    }
+  }, [activeTab, user]);
+
+  const playAudioTrack = (audio: Audio, index: number) => {
+    setCurrentPlayingAudio(audio);
+    setCurrentPlayingTrackIndex(index);
+    setIsAudioPlaying(true);
+    setTrackProgress(0);
+    
+    if (audioElRef.current) {
+      audioElRef.current.src = audio.tracks[index].url;
+      audioElRef.current.volume = audioVolume;
+      audioElRef.current.load();
+      audioElRef.current.play().catch(e => console.error("Error playing audio track", e));
+    }
+  };
+
+  const togglePlayAudio = () => {
+    if (audioElRef.current) {
+      if (isAudioPlaying) {
+        audioElRef.current.pause();
+        setIsAudioPlaying(false);
+      } else {
+        audioElRef.current.play().catch(e => console.error("Error playing audio", e));
+        setIsAudioPlaying(true);
+      }
+    }
+  };
+
+  const nextAudioTrack = () => {
+    if (currentPlayingAudio && currentPlayingTrackIndex < currentPlayingAudio.tracks.length - 1) {
+      playAudioTrack(currentPlayingAudio, currentPlayingTrackIndex + 1);
+    }
+  };
+
+  const prevAudioTrack = () => {
+    if (currentPlayingAudio && currentPlayingTrackIndex > 0) {
+      playAudioTrack(currentPlayingAudio, currentPlayingTrackIndex - 1);
+    }
+  };
+
+  const handleAudioTimeUpdate = () => {
+    if (audioElRef.current) {
+      setTrackProgress(audioElRef.current.currentTime);
+    }
+  };
+
+  const handleAudioLoadedMetadata = () => {
+    if (audioElRef.current) {
+      setTrackDuration(audioElRef.current.duration);
+    }
+  };
+
+  const handleAudioEnded = () => {
+    if (currentPlayingAudio && currentPlayingTrackIndex < currentPlayingAudio.tracks.length - 1) {
+      playAudioTrack(currentPlayingAudio, currentPlayingTrackIndex + 1);
+    } else {
+      setIsAudioPlaying(false);
+    }
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    setAudioVolume(newVolume);
+    if (audioElRef.current) {
+      audioElRef.current.volume = newVolume;
+    }
+  };
+
+  const formatAudioTime = (seconds: number) => {
+    if (isNaN(seconds)) return "00:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Active sub-views
   const [activeLectureCourse, setActiveLectureCourse] = useState<Course | null>(null);
@@ -2882,7 +2987,7 @@ const StudentDashboard = ({
                 src={embedUrl}
                 title={currentPlayingVideo?.title || 'Lecture'}
                 className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; gyroscope; picture-in-picture"
                 allowFullScreen
               ></iframe>
             </div>
@@ -3060,6 +3165,7 @@ const StudentDashboard = ({
                     items: [
                       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
                       { id: 'courses', label: 'My Courses', icon: BookOpen },
+                      { id: 'student-audios', label: 'My Audios', icon: Headphones },
                       { id: 'assignments', label: 'Assignments', icon: ClipboardList }
                     ]
                   },
@@ -3130,6 +3236,7 @@ const StudentDashboard = ({
               items: [
                 { id: 'overview', label: 'Overview', icon: LayoutDashboard },
                 { id: 'courses', label: 'My Courses', icon: BookOpen },
+                { id: 'student-audios', label: 'My Audios', icon: Headphones },
                 { id: 'assignments', label: 'Assignments', icon: ClipboardList }
               ]
             },
@@ -3190,6 +3297,7 @@ const StudentDashboard = ({
             <h1 className="font-bold text-slate-900 text-lg md:text-xl truncate">
               {activeTab === 'overview' && 'Student Sanctuary'}
               {activeTab === 'courses' && (showCatalog ? 'Spiritual Course Catalog' : 'My Prophetic Lectures')}
+              {activeTab === 'student-audios' && 'My Audio Sanctuary'}
               {activeTab === 'assignments' && 'Prophetic Exercises'}
               {activeTab === 'mentorship' && 'Mentorship Roundtable'}
               {activeTab === 'certificates' && 'Issued Certificates'}
@@ -3449,6 +3557,261 @@ const StudentDashboard = ({
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+
+          {/* TAB 2b: MY AUDIO SANCTUARY */}
+          {activeTab === 'student-audios' && (
+            <div>
+              {/* Hidden HTML5 Audio element for playback */}
+              <audio
+                ref={audioElRef}
+                onTimeUpdate={handleAudioTimeUpdate}
+                onLoadedMetadata={handleAudioLoadedMetadata}
+                onEnded={handleAudioEnded}
+                style={{ display: 'none' }}
+              />
+
+              {isLoadingAudios ? (
+                <div className="flex items-center justify-center py-24">
+                  <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : purchasedAudios.length === 0 ? (
+                <div className="bg-white border border-slate-100 rounded-3xl p-12 text-center max-w-lg mx-auto shadow-sm">
+                  <Headphones className="w-14 h-14 text-slate-200 mx-auto mb-5" />
+                  <h3 className="font-bold text-slate-800 text-lg mb-2">No audio courses yet</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                    Your purchased audio courses will appear here. Visit the Digital Audio Store to browse and purchase anointed audio messages.
+                  </p>
+                  <button
+                    onClick={() => onNavigate && onNavigate('audios')}
+                    className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 transition-opacity"
+                  >
+                    Browse Audio Store
+                  </button>
+                </div>
+              ) : (
+                <div className="grid lg:grid-cols-5 gap-6">
+
+                  {/* LEFT: Course Library Grid */}
+                  <div className="lg:col-span-2 space-y-3">
+                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <Music className="w-4 h-4 text-purple-500" />
+                      My Library ({purchasedAudios.length})
+                    </h3>
+                    {purchasedAudios.map((audio) => (
+                      <button
+                        key={audio.id}
+                        onClick={() => {
+                          if (currentPlayingAudio?.id === audio.id) return;
+                          setCurrentPlayingAudio(audio);
+                          setCurrentPlayingTrackIndex(0);
+                          setIsAudioPlaying(false);
+                          setTrackProgress(0);
+                          if (audioElRef.current) {
+                            audioElRef.current.pause();
+                            audioElRef.current.src = '';
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
+                          currentPlayingAudio?.id === audio.id
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-transparent text-white shadow-lg shadow-purple-500/20'
+                            : 'bg-white border-slate-100 hover:border-purple-200 hover:shadow-md text-slate-800'
+                        }`}
+                      >
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={audio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop'}
+                            alt={audio.title}
+                            className={`w-12 h-12 rounded-xl object-cover ${
+                              currentPlayingAudio?.id === audio.id && isAudioPlaying ? 'animate-pulse' : ''
+                            }`}
+                          />
+                          {currentPlayingAudio?.id === audio.id && isAudioPlaying && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                              <Volume2 className="w-4 h-4 text-white animate-pulse" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-bold text-xs leading-tight line-clamp-2 ${
+                            currentPlayingAudio?.id === audio.id ? 'text-white' : 'text-slate-800'
+                          }`}>{audio.title}</div>
+                          <div className={`text-[10px] mt-0.5 ${
+                            currentPlayingAudio?.id === audio.id ? 'text-indigo-200' : 'text-slate-500'
+                          }`}>{audio.artist}</div>
+                          <div className={`text-[9px] mt-1 font-bold flex items-center gap-1 ${
+                            currentPlayingAudio?.id === audio.id ? 'text-purple-200' : 'text-purple-600'
+                          }`}>
+                            <Music className="w-3 h-3" />
+                            {audio.tracks?.length || 0} tracks · {audio.duration}
+                          </div>
+                        </div>
+                        {currentPlayingAudio?.id === audio.id && (
+                          <ChevronRight className="w-4 h-4 flex-shrink-0 text-white" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* RIGHT: Audio Player Panel */}
+                  <div className="lg:col-span-3">
+                    {!currentPlayingAudio ? (
+                      <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center shadow-sm">
+                        <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Headphones className="w-12 h-12 text-purple-300" />
+                        </div>
+                        <p className="text-sm text-slate-500 font-medium">Select an audio course from your library to begin listening</p>
+                      </div>
+                    ) : (
+                      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 rounded-3xl overflow-hidden shadow-xl">
+
+                        {/* Cover + Now Playing Info */}
+                        <div className="p-6 flex items-center gap-5">
+                          <div className="relative flex-shrink-0">
+                            <img
+                              src={currentPlayingAudio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop'}
+                              alt={currentPlayingAudio.title}
+                              className={`w-24 h-24 rounded-2xl object-cover shadow-xl shadow-black/40 ${
+                                isAudioPlaying ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900' : ''
+                              }`}
+                            />
+                            {isAudioPlaying && (
+                              <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center">
+                                <span className="w-2 h-2 bg-amber-400 rounded-full animate-ping" />
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">{currentPlayingAudio.category} · {currentPlayingAudio.tracks?.length || 0} tracks</span>
+                            <h3 className="font-bold text-white text-base leading-tight mt-1 line-clamp-2">{currentPlayingAudio.title}</h3>
+                            <p className="text-xs text-indigo-300 mt-1">{currentPlayingAudio.artist}</p>
+                            {currentPlayingAudio.tracks && currentPlayingAudio.tracks[currentPlayingTrackIndex] && (
+                              <div className="mt-2 px-2.5 py-1 bg-white/10 rounded-full inline-flex items-center gap-1.5">
+                                <Play className="w-3 h-3 text-amber-400 fill-amber-400" />
+                                <span className="text-[10px] text-white font-bold">
+                                  {currentPlayingAudio.tracks[currentPlayingTrackIndex].title}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="px-6 pb-2">
+                          <div className="flex justify-between text-[10px] text-indigo-400 font-mono mb-1">
+                            <span>{formatAudioTime(trackProgress)}</span>
+                            <span>{formatAudioTime(trackDuration)}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max={trackDuration || 1}
+                            value={trackProgress}
+                            onChange={(e) => {
+                              const t = Number(e.target.value);
+                              setTrackProgress(t);
+                              if (audioElRef.current) audioElRef.current.currentTime = t;
+                            }}
+                            className="w-full h-1.5 rounded-full accent-amber-400 cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Playback Controls */}
+                        <div className="px-6 pb-4 flex items-center justify-center gap-6">
+                          <button
+                            onClick={prevAudioTrack}
+                            disabled={currentPlayingTrackIndex === 0}
+                            className="p-2 text-indigo-300 hover:text-white disabled:opacity-30 transition-colors"
+                          >
+                            <SkipBack className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!currentPlayingAudio?.tracks?.length) return;
+                              if (!isAudioPlaying || !audioElRef.current?.src || audioElRef.current?.src === window.location.href) {
+                                playAudioTrack(currentPlayingAudio, currentPlayingTrackIndex);
+                              } else {
+                                togglePlayAudio();
+                              }
+                            }}
+                            className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-xl shadow-amber-500/40 hover:scale-105 transition-transform"
+                          >
+                            {isAudioPlaying
+                              ? <Pause className="w-6 h-6 text-slate-900 fill-slate-900" />
+                              : <Play className="w-6 h-6 text-slate-900 fill-slate-900 ml-0.5" />}
+                          </button>
+                          <button
+                            onClick={nextAudioTrack}
+                            disabled={!currentPlayingAudio?.tracks || currentPlayingTrackIndex >= currentPlayingAudio.tracks.length - 1}
+                            className="p-2 text-indigo-300 hover:text-white disabled:opacity-30 transition-colors"
+                          >
+                            <SkipForward className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Volume */}
+                        <div className="px-6 pb-4 flex items-center gap-3">
+                          <Volume2 className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={audioVolume}
+                            onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                            className="flex-1 h-1.5 rounded-full accent-amber-400 cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Track Playlist */}
+                        <div className="border-t border-white/10 mx-6 mb-6 pt-4">
+                          <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Playlist</div>
+                          <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                            {(currentPlayingAudio.tracks || []).map((track, idx) => {
+                              const isCurrentTrack = idx === currentPlayingTrackIndex;
+                              return (
+                                <button
+                                  key={track.id || idx}
+                                  onClick={() => playAudioTrack(currentPlayingAudio, idx)}
+                                  className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all ${
+                                    isCurrentTrack
+                                      ? 'bg-white/15 border border-white/20'
+                                      : 'hover:bg-white/8 border border-transparent'
+                                  }`}
+                                >
+                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-black ${
+                                    isCurrentTrack
+                                      ? 'bg-amber-400 text-slate-900'
+                                      : 'bg-white/10 text-indigo-300'
+                                  }`}>
+                                    {isCurrentTrack && isAudioPlaying
+                                      ? <Volume2 className="w-3 h-3 animate-pulse" />
+                                      : idx + 1}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className={`text-xs font-bold line-clamp-1 ${
+                                      isCurrentTrack ? 'text-white' : 'text-indigo-200'
+                                    }`}>{track.title}</div>
+                                    <div className="text-[10px] text-indigo-500 font-mono mt-0.5">{track.duration}</div>
+                                  </div>
+                                  {isCurrentTrack && isAudioPlaying && (
+                                    <Pause className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                                  )}
+                                  {(!isCurrentTrack || !isAudioPlaying) && (
+                                    <Play className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -4011,13 +4374,16 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
   const [showAudioForm, setShowAudioForm] = useState(false);
   const [editingAudio, setEditingAudio] = useState<Audio | null>(null);
   const [audioFormData, setAudioFormData] = useState({
-    title: '', artist: '', coverUrl: '', audioUrl: '',
+    title: '', artist: '', coverUrl: '',
     description: '', category: 'Prophetic', duration: '',
-    price: '', originalPrice: '', isFeatured: false, isBestseller: false
+    price: '', originalPrice: '', isFeatured: false, isBestseller: false,
+    tracks: [] as { title: string; url: string; duration: string }[]
   });
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
-  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isSavingAudio, setIsSavingAudio] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [uploadingTrackIdx, setUploadingTrackIdx] = useState<number | null>(null);
+
 
   // Load all dashboard tables from the backend REST API
   const refreshDashboardData = async () => {
@@ -4203,48 +4569,41 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
       alert('Please fill out Title, Artist, and Price.');
       return;
     }
+    if (!audioFormData.tracks || audioFormData.tracks.length === 0) {
+      alert('Please add at least one audio track to the playlist.');
+      return;
+    }
     setIsSavingAudio(true);
     try {
-      let finalAudioUrl = audioFormData.audioUrl;
-      // Upload file if selected
-      if (audioFile) {
-        setIsUploadingAudio(true);
-        const res = await api.upload.audio(audioFile);
-        finalAudioUrl = res.url;
-        setIsUploadingAudio(false);
-      }
-
       const payload = {
         ...audioFormData,
-        audioUrl: finalAudioUrl,
         price: parseFloat(audioFormData.price),
         originalPrice: audioFormData.originalPrice ? parseFloat(audioFormData.originalPrice) : null,
       };
 
       if (editingAudio) {
         await api.audios.update(editingAudio.id, payload);
-        alert('Audio updated successfully!');
+        alert('Audio course updated successfully!');
       } else {
         await api.audios.create(payload);
-        alert('Audio created successfully!');
+        alert('Audio course created successfully!');
       }
 
       // Reset form and state
       setAudioFormData({
-        title: '', artist: '', coverUrl: '', audioUrl: '',
+        title: '', artist: '', coverUrl: '',
         description: '', category: 'Prophetic', duration: '',
-        price: '', originalPrice: '', isFeatured: false, isBestseller: false
+        price: '', originalPrice: '', isFeatured: false, isBestseller: false,
+        tracks: []
       });
-      setAudioFile(null);
       setEditingAudio(null);
       setShowAudioForm(false);
       await refreshDashboardData();
     } catch (err: any) {
       console.error('Failed to save audio:', err);
-      alert(err.message || 'Failed to save audio product.');
+      alert(err.message || 'Failed to save audio course.');
     } finally {
       setIsSavingAudio(false);
-      setIsUploadingAudio(false);
     }
   };
 
@@ -4254,17 +4613,18 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
       title: audio.title,
       artist: audio.artist,
       coverUrl: audio.coverUrl,
-      audioUrl: audio.audioUrl,
       description: audio.description,
       category: audio.category,
       duration: audio.duration,
       price: String(audio.price),
       originalPrice: audio.originalPrice ? String(audio.originalPrice) : '',
       isFeatured: audio.isFeatured || false,
-      isBestseller: audio.isBestseller || false
+      isBestseller: audio.isBestseller || false,
+      tracks: audio.tracks || []
     });
     setShowAudioForm(true);
   };
+
 
   const handleDeleteAudio = async (audioId: string) => {
     if (!confirm('Are you sure you want to delete this audio product?')) return;
@@ -5037,7 +5397,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                       src={getYouTubeEmbedUrl(previewVideoUrl)}
                       title="Video preview"
                       frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="accelerometer; autoplay; clipboard-write; gyroscope; picture-in-picture"
                       allowFullScreen
                     ></iframe>
                   </div>
@@ -6764,11 +7124,11 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                     onClick={() => {
                       setEditingAudio(null);
                       setAudioFormData({
-                        title: '', artist: '', coverUrl: '', audioUrl: '',
+                        title: '', artist: '', coverUrl: '',
                         description: '', category: 'Prophetic', duration: '',
-                        price: '', originalPrice: '', isFeatured: false, isBestseller: false
+                        price: '', originalPrice: '', isFeatured: false, isBestseller: false,
+                        tracks: []
                       });
-                      setAudioFile(null);
                       setShowAudioForm(true);
                     }}
                     className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-amber-500 text-white font-semibold rounded-xl shadow-lg flex items-center gap-2 text-sm"
@@ -6854,7 +7214,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                 <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">{editingAudio ? 'Edit Audio Product' : 'Add New Audio Product'}</h2>
-                    <p className="text-sm text-gray-500">Provide audio files, pricing detail, and display information</p>
+                    <p className="text-sm text-gray-500">Upload audio files, set pricing, and add track details</p>
                   </div>
                   <button 
                     onClick={() => { setShowAudioForm(false); setEditingAudio(null); }}
@@ -6935,16 +7295,26 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Duration *</label>
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Total Duration</label>
                           <input
                             type="text"
-                            required
-                            placeholder="e.g. 45 min or 1 hr 12 min"
+                            placeholder="Auto-calculated from tracks"
                             value={audioFormData.duration}
                             onChange={e => setAudioFormData({...audioFormData, duration: e.target.value})}
-                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-50"
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Description</label>
+                        <textarea
+                          rows={4}
+                          value={audioFormData.description}
+                          onChange={e => setAudioFormData({...audioFormData, description: e.target.value})}
+                          placeholder="Explain what listeners will receive in this spiritual audio message..."
+                          className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
                       </div>
 
                       <div className="flex gap-6 pt-2">
@@ -6969,68 +7339,238 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                       </div>
                     </div>
 
-                    {/* Right Column - Media & Files */}
+                    {/* Right Column - Cover Image & Tracks */}
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Cover Image URL *</label>
-                        <input
-                          type="url"
-                          required
-                          value={audioFormData.coverUrl}
-                          onChange={e => setAudioFormData({...audioFormData, coverUrl: e.target.value})}
-                          placeholder="https://images.unsplash.com/..."
-                          className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                      </div>
 
+                      {/* Cover Image Upload */}
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Audio file source</label>
-                        <div className="space-y-3">
-                          <div className="flex gap-4 p-4 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Cover Image *</label>
+                        <div className="flex gap-3 items-start">
+                          {/* Preview */}
+                          <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {audioFormData.coverUrl ? (
+                              <img src={audioFormData.coverUrl} alt="cover" className="w-full h-full object-cover rounded-2xl" />
+                            ) : (
+                              <span className="text-gray-300 text-3xl">🎵</span>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            {/* File upload button */}
                             <input
                               type="file"
-                              accept="audio/*"
-                              id="audio-file-upload-input"
-                              onChange={e => {
+                              accept="image/*"
+                              id="cover-image-upload"
+                              className="hidden"
+                              onChange={async (e) => {
                                 if (e.target.files && e.target.files[0]) {
-                                  setAudioFile(e.target.files[0]);
+                                  const file = e.target.files[0];
+                                  setIsUploadingCover(true);
+                                  try {
+                                    const res = await api.upload.image(file);
+                                    setAudioFormData(prev => ({ ...prev, coverUrl: res.url }));
+                                  } catch (err: any) {
+                                    alert('Cover image upload failed: ' + err.message);
+                                  } finally {
+                                    setIsUploadingCover(false);
+                                    e.target.value = '';
+                                  }
                                 }
                               }}
-                              className="hidden"
                             />
-                            <label 
-                              htmlFor="audio-file-upload-input"
-                              className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm flex items-center gap-1.5"
+                            <label
+                              htmlFor="cover-image-upload"
+                              className={`flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl border border-gray-200 text-xs font-bold cursor-pointer transition-all ${isUploadingCover ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-white hover:bg-gray-50 text-gray-700'}`}
                             >
-                              <Plus className="w-3.5 h-3.5" />
-                              Select Audio File
+                              {isUploadingCover ? (
+                                <><div className="w-3.5 h-3.5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" /> Uploading...</>
+                              ) : (
+                                <><Upload className="w-3.5 h-3.5" /> Upload Image</>
+                              )}
                             </label>
-                            <span className="text-xs text-gray-500 self-center truncate">
-                              {audioFile ? audioFile.name : 'No file chosen (up to 100MB)'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="block text-[10px] text-gray-400 font-bold mb-1">OR Enter Direct Audio Stream/Download URL</span>
+                            {/* Or paste URL */}
                             <input
                               type="url"
-                              value={audioFormData.audioUrl}
-                              onChange={e => setAudioFormData({...audioFormData, audioUrl: e.target.value})}
-                              placeholder="https://yourserver.com/audio.mp3"
-                              className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              value={audioFormData.coverUrl}
+                              onChange={e => setAudioFormData({...audioFormData, coverUrl: e.target.value})}
+                              placeholder="…or paste image URL"
+                              className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                             />
                           </div>
                         </div>
                       </div>
 
+                      {/* Audio Tracks */}
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Description</label>
-                        <textarea
-                          rows={3}
-                          value={audioFormData.description}
-                          onChange={e => setAudioFormData({...audioFormData, description: e.target.value})}
-                          placeholder="Explain what learners will receive in this spiritual audio message..."
-                          className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
+                        <div className="flex justify-between items-center mb-3">
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Audio Tracks Playlist *</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAudioFormData(prev => ({
+                                ...prev,
+                                tracks: [...prev.tracks, { title: '', url: '', duration: '' }]
+                              }));
+                            }}
+                            className="px-3 py-1 bg-purple-50 text-purple-600 rounded-lg text-xs font-bold hover:bg-purple-100 flex items-center gap-1 transition-all"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Add Track
+                          </button>
+                        </div>
+                        
+                        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                          {audioFormData.tracks.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+                              <Music className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                              No tracks added yet.<br />Click "Add Track" to build your playlist.
+                            </div>
+                          ) : (
+                            audioFormData.tracks.map((track, idx) => (
+                              <div key={idx} className="p-3 border border-gray-200 rounded-2xl bg-gray-50/50 space-y-2 relative">
+                                {/* Remove track */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAudioFormData(prev => {
+                                      const t = [...prev.tracks];
+                                      t.splice(idx, 1);
+                                      return { ...prev, tracks: t };
+                                    });
+                                  }}
+                                  className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50"
+                                >
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Track number badge */}
+                                <span className="text-[10px] font-black text-purple-600 uppercase tracking-wider">Track {idx + 1}</span>
+
+                                {/* Title row */}
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="Track Title (e.g. Part 1 — The Vision)"
+                                  value={track.title}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    setAudioFormData(prev => {
+                                      const t = [...prev.tracks];
+                                      t[idx] = { ...t[idx], title: val };
+                                      return { ...prev, tracks: t };
+                                    });
+                                  }}
+                                  className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                />
+
+                                {/* Audio file upload + url + duration */}
+                                <div className="flex gap-2 items-center">
+                                  {/* Upload button */}
+                                  <input
+                                    type="file"
+                                    accept="audio/*"
+                                    id={`track-upload-${idx}`}
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      if (!e.target.files || !e.target.files[0]) return;
+                                      const file = e.target.files[0];
+                                      setUploadingTrackIdx(idx);
+
+                                      // Auto-detect duration using HTML Audio API
+                                      const detectDuration = (): Promise<string> => new Promise((resolve) => {
+                                        const tempAudio = new window.Audio();
+                                        const objectUrl = URL.createObjectURL(file);
+                                        tempAudio.src = objectUrl;
+                                        tempAudio.onloadedmetadata = () => {
+                                          const secs = Math.floor(tempAudio.duration);
+                                          const m = Math.floor(secs / 60);
+                                          const s = secs % 60;
+                                          URL.revokeObjectURL(objectUrl);
+                                          resolve(`${m}:${String(s).padStart(2, '0')}`);
+                                        };
+                                        tempAudio.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(''); };
+                                      });
+
+                                      try {
+                                        const [uploadRes, detectedDuration] = await Promise.all([
+                                          api.upload.audio(file),
+                                          detectDuration()
+                                        ]);
+
+                                        setAudioFormData(prev => {
+                                          const t = [...prev.tracks];
+                                          t[idx] = { ...t[idx], url: uploadRes.url, duration: detectedDuration || t[idx].duration };
+                                          // Auto-update total duration from all track durations
+                                          const totalSecs = t.reduce((acc, tr) => {
+                                            const [mm, ss] = (tr.duration || '0:0').split(':').map(Number);
+                                            return acc + (mm * 60 + (ss || 0));
+                                          }, 0);
+                                          const tm = Math.floor(totalSecs / 60);
+                                          const ts = totalSecs % 60;
+                                          return { ...prev, tracks: t, duration: `${tm}:${String(ts).padStart(2, '0')} min` };
+                                        });
+                                      } catch (err: any) {
+                                        alert('Audio upload failed: ' + err.message);
+                                      } finally {
+                                        setUploadingTrackIdx(null);
+                                        e.target.value = '';
+                                      }
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`track-upload-${idx}`}
+                                    className={`flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl border text-[10px] font-bold cursor-pointer transition-all whitespace-nowrap ${
+                                      uploadingTrackIdx === idx
+                                        ? 'bg-purple-50 border-purple-200 text-purple-600 cursor-wait'
+                                        : track.url && track.url !== ''
+                                        ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {uploadingTrackIdx === idx ? (
+                                      <><div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" /> Uploading</>
+                                    ) : track.url && track.url !== '' ? (
+                                      <><CheckCircle className="w-3 h-3" /> Uploaded</>
+                                    ) : (
+                                      <><Upload className="w-3 h-3" /> Upload Audio</>
+                                    )}
+                                  </label>
+
+                                  {/* URL display / manual entry */}
+                                  <input
+                                    type="text"
+                                    placeholder="File URL (auto-filled on upload)"
+                                    value={uploadingTrackIdx === idx ? 'Uploading...' : track.url}
+                                    readOnly={uploadingTrackIdx === idx}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      setAudioFormData(prev => {
+                                        const t = [...prev.tracks];
+                                        t[idx] = { ...t[idx], url: val };
+                                        return { ...prev, tracks: t };
+                                      });
+                                    }}
+                                    className="flex-1 min-w-0 p-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-500 truncate"
+                                  />
+
+                                  {/* Duration */}
+                                  <input
+                                    type="text"
+                                    placeholder="mm:ss"
+                                    value={track.duration}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      setAudioFormData(prev => {
+                                        const t = [...prev.tracks];
+                                        t[idx] = { ...t[idx], duration: val };
+                                        return { ...prev, tracks: t };
+                                      });
+                                    }}
+                                    className="w-16 p-2 border border-gray-200 rounded-xl text-xs text-center focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                  />
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -7045,10 +7585,10 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                     </button>
                     <button
                       type="submit"
-                      disabled={isSavingAudio || isUploadingAudio}
+                      disabled={isSavingAudio || isUploadingCover || uploadingTrackIdx !== null}
                       className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-amber-500 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg disabled:opacity-50 transition-all flex items-center gap-2"
                     >
-                      {isSavingAudio || isUploadingAudio ? (
+                      {isSavingAudio ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Saving...
