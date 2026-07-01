@@ -8167,6 +8167,7 @@ function App() {
         setPaymentMethod('card');
         setEnrollmentTrigger(prev => prev + 1);
         setAutoOpenCourse(purchasedCourse);
+        setAutoOpenTab('courses');
         setCurrentPage('student-dashboard');
       } catch (err) {
         alert('Payment processing failed.');
@@ -8206,9 +8207,12 @@ function App() {
         const updatedAudios = [...(user.purchasedAudios || []), checkoutAudio.id];
         setUser({ ...user, purchasedAudios: updatedAudios });
         alert(`Purchase successful! "${checkoutAudio.title}" is now available in My Audios.`);
+        const purchasedAudio = checkoutAudio;
         setCheckoutAudio(null);
         setAudioPaymentMethod('card');
         fetchAudiosList();
+        setAutoOpenAudio(purchasedAudio);
+        setAutoOpenTab('student-audios');
         setCurrentPage('student-dashboard');
       } catch (err) {
         alert('Audio payment processing failed. Please try again.');
@@ -8511,10 +8515,13 @@ function App() {
             setUser(signedUser);
             if (checkoutCourse) {
               setAutoOpenCourse(checkoutCourse);
+              setAutoOpenTab('courses');
               setCheckoutCourse(null);
               setEnrollmentTrigger(prev => prev + 1);
             }
             if (checkoutAudio) {
+              setAutoOpenAudio(checkoutAudio);
+              setAutoOpenTab('student-audios');
               setCheckoutAudio(null);
               fetchAudiosList(); // Refresh list to reflect purchase
             }
@@ -8550,6 +8557,10 @@ function App() {
             onCheckout={(course) => setCheckoutCourse(course)} 
             initialActiveCourse={autoOpenCourse}
             onClearInitialActiveCourse={() => setAutoOpenCourse(null)}
+            initialTab={autoOpenTab}
+            onClearInitialTab={() => setAutoOpenTab(null)}
+            initialActiveAudio={autoOpenAudio}
+            onClearInitialActiveAudio={() => setAutoOpenAudio(null)}
           />
           {renderCheckoutModal()}
         </div>
