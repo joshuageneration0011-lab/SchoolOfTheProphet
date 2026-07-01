@@ -8038,6 +8038,8 @@ function App() {
   // Checkout Modal State
   const [checkoutCourse, setCheckoutCourse] = useState<Course | null>(null);
   const [autoOpenCourse, setAutoOpenCourse] = useState<Course | null>(null);
+  const [autoOpenAudio, setAutoOpenAudio] = useState<Audio | null>(null);
+  const [autoOpenTab, setAutoOpenTab] = useState<'overview' | 'courses' | 'student-audios' | 'assignments' | 'mentorship' | 'certificates' | 'support' | 'scholarships' | null>(null);
   const [enrollmentTrigger, setEnrollmentTrigger] = useState(0);
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
