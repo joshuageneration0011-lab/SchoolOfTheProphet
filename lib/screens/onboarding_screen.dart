@@ -42,8 +42,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: isLight
-                    ? [Colors.white, const Color(0xFFF1F5F9)]
-                    : [const Color(0xFF1E1B4B), const Color(0xFF0F172A)],
+                    ? [const Color(0xFFFAFAF9), const Color(0xFFF5F5F4)]
+                    : [const Color(0xFF02040A), const Color(0xFF090714), const Color(0xFF0B0F19)],
               ),
             ),
           ),
@@ -64,31 +64,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   children: [
                     // Slide Image with Glass Border Mock
                     Container(
-                      height: 280,
+                      height: 300,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: isLight ? Colors.black.withOpacity(0.06) : Colors.purple.withOpacity(0.2),
-                            blurRadius: 20,
-                            spreadRadius: 5,
+                            color: isLight ? Colors.black.withOpacity(0.06) : const Color(0xFF6366F1).withOpacity(0.2),
+                            blurRadius: 24,
+                            spreadRadius: 2,
                           )
                         ],
                         image: DecorationImage(
                           image: NetworkImage(slide['image']!),
                           fit: BoxFit.cover,
                         ),
+                        border: Border.all(
+                          color: isLight ? Colors.white.withOpacity(0.8) : Colors.white.withOpacity(0.08),
+                          width: 2,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 48),
                     Text(
                       slide['title']!,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: isLight ? const Color(0xFF1E293B) : Colors.white,
-                        letterSpacing: 0.5,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: isLight ? const Color(0xFF0F172A) : Colors.white,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -96,7 +100,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       slide['subtitle']!,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         color: isLight ? const Color(0xFF64748B) : Colors.indigo[100],
                         height: 1.5,
                       ),
@@ -118,13 +122,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Row(
                   children: List.generate(
                     _slides.length,
-                    (index) => Container(
+                    (index) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: 8),
                       height: 8,
-                      width: _currentIndex == index ? 24 : 8,
+                      width: _currentIndex == index ? 28 : 8,
                       decoration: BoxDecoration(
                         color: _currentIndex == index
-                            ? const Color(0xFFFBBF24)
+                            ? const Color(0xFF6366F1)
                             : (isLight ? Colors.black12 : Colors.white24),
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -144,12 +149,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFBBF24), // Amber
-                    foregroundColor: const Color(0xFF0F172A),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 0,
                   ),
                   child: Text(
                     _currentIndex == _slides.length - 1 ? 'Get Started' : 'Next',

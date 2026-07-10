@@ -6,15 +6,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiService extends ChangeNotifier {
   static String get baseUrl {
-    if (kReleaseMode) {
-      return 'https://sop.joshuasgeneration.com/api';
-    }
-    if (kIsWeb) {
-      return 'http://localhost:5001/api';
-    } else {
-      // Use 10.0.2.2 for Android emulator to access development server host loopback
-      return 'http://10.0.2.2:5001/api';
-    }
+    return 'https://sop.joshuasgeneration.com/api';
   }
 
   Map<String, dynamic>? _currentUser;
@@ -22,6 +14,7 @@ class ApiService extends ChangeNotifier {
   List<dynamic> _books = [];
   List<dynamic> _messages = [];
   List<dynamic> _blogPosts = [];
+  List<dynamic> _audios = [];
   bool _isLoading = false;
 
   Map<String, dynamic>? get currentUser => _currentUser;
@@ -29,12 +22,14 @@ class ApiService extends ChangeNotifier {
   List<dynamic> get books => _books;
   List<dynamic> get messages => _messages;
   List<dynamic> get blogPosts => _blogPosts;
+  List<dynamic> get audios => _audios;
   bool get isLoading => _isLoading;
 
   ApiService() {
     _loadUserSession();
     fetchBlogPosts();
     fetchBooks();
+    fetchAudios();
   }
 
   Future<void> _loadUserSession() async {
@@ -74,7 +69,8 @@ class ApiService extends ChangeNotifier {
           'email': 'student@sop.org',
           'role': 'student',
           'enrolledCourses': ['1', '2'],
-          'completedCourses': []
+          'completedCourses': [],
+          'purchasedAudios': ['a1']
         };
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_session', json.encode(_currentUser));
@@ -120,7 +116,8 @@ class ApiService extends ChangeNotifier {
         'email': email,
         'role': 'student',
         'enrolledCourses': [],
-        'completedCourses': []
+        'completedCourses': [],
+        'purchasedAudios': []
       };
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_session', json.encode(_currentUser));
@@ -339,7 +336,7 @@ class ApiService extends ChangeNotifier {
 
     // Then try the live API to override with real data
     try {
-      final url = '$baseUrl/books';
+      final url = 'https://joshuasgeneration.com/api/books';
       debugPrint('BOOKS API: Sending GET request to $url');
       final response = await http.get(Uri.parse(url));
       debugPrint('BOOKS API: Received response with status code: ${response.statusCode}');
@@ -375,7 +372,7 @@ class ApiService extends ChangeNotifier {
         'coverUrl': 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
         'description': 'Discover God\'s unique purpose for your life and walk boldly in your destiny.',
         'category': 'Purpose',
-        'pdfUrl': 'http://localhost:5001/books/purpose_and_destiny.pdf',
+        'pdfUrl': 'https://sop.joshuasgeneration.com/books/purpose_and_destiny.pdf',
         'selarUrl': 'https://selar.co/purposedestiny',
         'amazonUrl': 'https://amazon.com/dp/purpose-destiny',
         'price': 1500.0,
@@ -391,7 +388,7 @@ class ApiService extends ChangeNotifier {
         'coverUrl': 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&q=80',
         'description': 'A comprehensive guide to developing a powerful and effective prayer life.',
         'category': 'Prayer',
-        'pdfUrl': 'http://localhost:5001/books/prayer_warrior.pdf',
+        'pdfUrl': 'https://sop.joshuasgeneration.com/books/prayer_warrior.pdf',
         'selarUrl': 'https://selar.co/prayerwarrior',
         'amazonUrl': 'https://amazon.com/dp/prayer-warrior',
         'price': 1000.0,
@@ -407,7 +404,7 @@ class ApiService extends ChangeNotifier {
         'coverUrl': 'https://images.unsplash.com/photo-1621351183012-e2f9972dd9bf?w=400&q=80',
         'description': 'Biblical principles for financial freedom and kingdom stewardship.',
         'category': 'Finance',
-        'pdfUrl': 'http://localhost:5001/books/kingdom_economics.pdf',
+        'pdfUrl': 'https://sop.joshuasgeneration.com/books/kingdom_economics.pdf',
         'selarUrl': 'https://selar.co/kingdomeconomics',
         'amazonUrl': 'https://amazon.com/dp/kingdom-economics',
         'price': 2000.0,
@@ -423,7 +420,7 @@ class ApiService extends ChangeNotifier {
         'coverUrl': 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&q=80',
         'description': 'Learn to live a Spirit-led life in every area of your daily walk.',
         'category': 'Spiritual Growth',
-        'pdfUrl': 'http://localhost:5001/books/walking_in_the_spirit.pdf',
+        'pdfUrl': 'https://sop.joshuasgeneration.com/books/walking_in_the_spirit.pdf',
         'selarUrl': 'https://selar.co/walkingspirit',
         'amazonUrl': 'https://amazon.com/dp/walking-spirit',
         'price': 1200.0,
@@ -439,7 +436,7 @@ class ApiService extends ChangeNotifier {
         'coverUrl': 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
         'description': 'Find emotional and spiritual healing through God\'s restoring power.',
         'category': 'Healing',
-        'pdfUrl': 'http://localhost:5001/books/healing_broken.pdf',
+        'pdfUrl': 'https://sop.joshuasgeneration.com/books/healing_broken.pdf',
         'selarUrl': 'https://selar.co/healingbroken',
         'amazonUrl': 'https://amazon.com/dp/healing-broken',
         'price': 1800.0,
@@ -455,7 +452,7 @@ class ApiService extends ChangeNotifier {
         'coverUrl': 'https://images.unsplash.com/photo-1621351183012-e2f9972dd9bf?w=400&q=80',
         'description': 'Building a strong spiritual foundation for your family through daily devotion.',
         'category': 'Family',
-        'pdfUrl': 'http://localhost:5001/books/family_altar.pdf',
+        'pdfUrl': 'https://sop.joshuasgeneration.com/books/family_altar.pdf',
         'selarUrl': 'https://selar.co/familyaltar',
         'amazonUrl': 'https://amazon.com/dp/family-altar',
         'price': 1600.0,
@@ -526,7 +523,7 @@ class ApiService extends ChangeNotifier {
 
   Future<void> fetchBlogPosts() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/blog'));
+      final response = await http.get(Uri.parse('https://joshuasgeneration.com/api/blog'));
       if (response.statusCode == 200) {
         _blogPosts = json.decode(response.body);
         notifyListeners();
@@ -653,5 +650,131 @@ If you find yourself operating in this gift, guard your heart. The greatest trap
       _blogPosts[idx] = post;
       notifyListeners();
     }
+  }
+
+  // ── Digital Audios Store & Sanctuary: Sync from REST API with Fallbacks ─────
+  void _loadFallbackAudios() {
+    _audios = [
+      {
+        'id': 'a1',
+        'title': 'Discerning Prophetic Times & Seasons',
+        'artist': 'Apostle Joshua Generation',
+        'coverUrl': 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop',
+        'description': 'Deep dive into understanding spiritual watches, registering shifts in the atmosphere, and moving with prophetic accuracy.',
+        'category': 'Prophetic',
+        'duration': '1 hr 15 min',
+        'price': 2500.0,
+        'originalPrice': 4500.0,
+        'rating': 4.9,
+        'plays': 24,
+        'isFeatured': true,
+        'isBestseller': true,
+        'tracks': [
+          { 'id': 't1', 'title': 'Part 1: The Chronology of the Spirit', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'duration': '25 min' },
+          { 'id': 't2', 'title': 'Part 2: Registering Atmospheres', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', 'duration': '30 min' },
+          { 'id': 't3', 'title': 'Part 3: Prophetic Positioning', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', 'duration': '20 min' }
+        ]
+      },
+      {
+        'id': 'a2',
+        'title': 'Deep Prophetic Intercession & Worship',
+        'artist': 'Minister Grace Okoro',
+        'coverUrl': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop',
+        'description': 'Anointed atmospheric worship designed to usher you into deeper portals of personal and corporate intercessory prayer.',
+        'category': 'Worship',
+        'duration': '58 min',
+        'price': 1500.0,
+        'originalPrice': 3000.0,
+        'rating': 4.8,
+        'plays': 18,
+        'isFeatured': false,
+        'isBestseller': false,
+        'tracks': [
+          { 'id': 't4', 'title': 'Atmospheric Alignment (Worship)', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 'duration': '20 min' },
+          { 'id': 't5', 'title': 'The Sound of Intercession (Prayer)', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 'duration': '38 min' }
+        ]
+      },
+      {
+        'id': 'a3',
+        'title': 'Warfare Prayers & Midnight Decree',
+        'artist': 'Apostle David Okonkwo',
+        'coverUrl': 'https://images.unsplash.com/photo-1442504028989-ab58b5f69a3a?w=400&h=400&fit=crop',
+        'description': 'Command the morning watches and release strategic midnight decrees to dismantle dark spiritual strongholds.',
+        'category': 'Warfare',
+        'duration': '1 hr 45 min',
+        'price': 3000.0,
+        'originalPrice': 5000.0,
+        'rating': 4.9,
+        'plays': 35,
+        'isFeatured': true,
+        'isBestseller': true,
+        'tracks': [
+          { 'id': 't6', 'title': 'Midnight Alignment & Protocols', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', 'duration': '30 min' },
+          { 'id': 't7', 'title': 'Commanding the Morning Watches', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', 'duration': '45 min' },
+          { 'id': 't8', 'title': 'Releasing Prophetic Decrees', 'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', 'duration': '30 min' }
+        ]
+      }
+    ];
+  }
+
+  Future<void> fetchAudios() async {
+    _loadFallbackAudios();
+    notifyListeners();
+
+    try {
+      final url = '$baseUrl/audios';
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final List<dynamic> rawAudios = json.decode(response.body);
+        if (rawAudios.isNotEmpty) {
+          _audios = rawAudios;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('AUDIOS API Error: $e');
+    }
+  }
+
+  Future<bool> purchaseAudio(String audioId) async {
+    if (_currentUser == null) return false;
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/${_currentUser!['id']}/purchase-audio'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'audioId': audioId,
+        }),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(response.body);
+        final purchased = List<String>.from(body['purchasedAudios'] ?? []);
+        final updatedUser = Map<String, dynamic>.from(_currentUser!);
+        updatedUser['purchasedAudios'] = purchased;
+        _currentUser = updatedUser;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_session', json.encode(_currentUser));
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('AUDIOS API Purchase Error: $e');
+    }
+
+    // Offline fallback: update local session list
+    final purchased = List<String>.from(_currentUser!['purchasedAudios'] ?? []);
+    if (!purchased.contains(audioId)) {
+      purchased.add(audioId);
+      final updatedUser = Map<String, dynamic>.from(_currentUser!);
+      updatedUser['purchasedAudios'] = purchased;
+      _currentUser = updatedUser;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_session', json.encode(_currentUser));
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 }

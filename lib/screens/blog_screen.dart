@@ -48,6 +48,11 @@ class _BlogScreenState extends State<BlogScreen> {
     return Scaffold(
       backgroundColor: isLight ? Colors.white : const Color(0xFF0F172A),
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: isLight ? const Color(0xFF1E293B) : Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           'Prophetic Blog',
           style: TextStyle(
@@ -682,6 +687,17 @@ class _BlogDetailScreenState extends State<BlogDetailScreen> {
                 pinned: true,
                 backgroundColor: isLight ? Colors.white : const Color(0xFF1E1B4B),
                 iconTheme: IconThemeData(color: isLight ? const Color(0xFF1E293B) : Colors.white),
+                leading: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,

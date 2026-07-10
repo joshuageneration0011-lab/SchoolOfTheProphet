@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final Map<String, dynamic> course;
@@ -134,6 +135,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     return Scaffold(
       backgroundColor: isLight ? Colors.white : const Color(0xFF070B19),
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: isLight ? const Color(0xFF1E293B) : Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(course['title'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isLight ? const Color(0xFF1E293B) : Colors.white)),
         backgroundColor: isLight ? Colors.white : const Color(0xFF111E3E),
         foregroundColor: isLight ? const Color(0xFF1E293B) : Colors.white,
@@ -420,6 +426,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   }
 
   void _showPaymentSheet(BuildContext context, ApiService apiService, Map<String, dynamic> course) {
+    if (apiService.currentUser == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+      return;
+    }
     final isLight = Theme.of(context).brightness == Brightness.light;
     showModalBottomSheet(
       context: context,

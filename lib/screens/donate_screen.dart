@@ -133,7 +133,26 @@ class _DonateScreenState extends State<DonateScreen> {
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    return SingleChildScrollView(
+    return Scaffold(
+      backgroundColor: isLight ? Colors.white : const Color(0xFF0F172A),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: isLight ? const Color(0xFF1E293B) : Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Give & Partner',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+            color: isLight ? const Color(0xFF1E293B) : Colors.white,
+          ),
+        ),
+        backgroundColor: isLight ? Colors.white : const Color(0xFF1E1B4B),
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,7 +207,8 @@ class _DonateScreenState extends State<DonateScreen> {
           if (_step == 3) _buildSuccessStep(),
         ],
       ),
-    );
+    ), // closes body: SingleChildScrollView
+    ); // closes Scaffold
   }
 
   Widget _buildStepCircle(int stepNum, String title, bool isActive) {

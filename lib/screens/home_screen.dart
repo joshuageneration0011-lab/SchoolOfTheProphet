@@ -120,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final apiService = Provider.of<ApiService>(context, listen: false);
       apiService.fetchCourses();
       apiService.fetchBooks();
+      apiService.fetchAudios();
       apiService.fetchMessages();
       _loadLastWatchedCourse();
       _loadProfileData();
@@ -280,16 +281,23 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           },
           child: Scaffold(
-            backgroundColor: isLight ? Theme.of(context).scaffoldBackgroundColor : Colors.transparent,
+            backgroundColor: isLight ? const Color(0xFFFAFAF9) : const Color(0xFF030712),
             body: Container(
               decoration: BoxDecoration(
                 gradient: isLight
-                    ? null
+                    ? const LinearGradient(
+                        colors: [
+                          Color(0xFFFAFAF9),
+                          Color(0xFFF5F5F4),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
                     : const LinearGradient(
                         colors: [
-                          Color(0xFF05070F), // Rich deep dark navy
-                          Color(0xFF090D1C), // Midnight navy
-                          Color(0xFF120E2E), // Subtle dark indigo/violet glow at the bottom
+                          Color(0xFF02040A), // Rich void black
+                          Color(0xFF090714), // Deep velvet violet
+                          Color(0xFF0B0F19), // Midnight navy
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -308,60 +316,74 @@ class _HomeScreenState extends State<HomeScreen> {
                 // ── Persistent Global Mini-Player ────────────────────────────
                 if (audio.currentSermon != null) _buildMiniPlayer(audio),
                 // ── Bottom Navigation Bar ────────────────────────────────────
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: isLight ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.08),
-                        width: 1,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 16.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: isLight ? Colors.white.withOpacity(0.9) : const Color(0xFF0F172A).withOpacity(0.85),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isLight ? Colors.black.withOpacity(0.04) : Colors.black.withOpacity(0.4),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: isLight ? Colors.black.withOpacity(0.05) : const Color(0xFF334155).withOpacity(0.2),
+                        width: 1.2,
                       ),
                     ),
-                  ),
-                  child: BottomNavigationBar(
-                    currentIndex: _selectedTab,
-                    onTap: (index) {
-                      if (_selectedTab == index) {
-                        _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
-                      } else if (index == 1) {
-                        _navigateToTabProtected(index);
-                      } else {
-                        setState(() {
-                          _selectedTab = index;
-                        });
-                        _loadLastWatchedCourse();
-                      }
-                    },
-                    type: BottomNavigationBarType.fixed,
-                    backgroundColor: isLight ? Colors.white : const Color(0xFF090D1C),
-                    selectedItemColor: isLight ? const Color(0xFF4F46E5) : const Color(0xFFFBBF24),
-                    unselectedItemColor: isLight ? Colors.black45 : Colors.white60,
-                    items: const [
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.dashboard_outlined),
-                        activeIcon: Icon(Icons.dashboard),
-                        label: 'Portal',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.school_outlined),
-                        activeIcon: Icon(Icons.school),
-                        label: 'Courses',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.menu_book_outlined),
-                        activeIcon: Icon(Icons.menu_book),
-                        label: 'Books',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.headset_mic_outlined),
-                        activeIcon: Icon(Icons.headset_mic),
-                        label: 'Sermons',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.person_outline),
-                        activeIcon: Icon(Icons.person),
-                        label: 'Profile',
-                      ),
-                    ],
+                    clipBehavior: Clip.antiAlias,
+                    child: BottomNavigationBar(
+                      currentIndex: _selectedTab,
+                      onTap: (index) {
+                        if (_selectedTab == index) {
+                          _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
+                        } else if (index == 1 || index == 3) {
+                          _navigateToTabProtected(index);
+                        } else {
+                          setState(() {
+                            _selectedTab = index;
+                          });
+                          _loadLastWatchedCourse();
+                        }
+                      },
+                      type: BottomNavigationBarType.fixed,
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      selectedItemColor: isLight ? const Color(0xFF6366F1) : const Color(0xFFFBBF24),
+                      unselectedItemColor: isLight ? Colors.black38 : Colors.white30,
+                      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+                      items: const [
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.dashboard_outlined),
+                          activeIcon: Icon(Icons.dashboard),
+                          label: 'Portal',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.school_outlined),
+                          activeIcon: Icon(Icons.school),
+                          label: 'Courses',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.menu_book_outlined),
+                          activeIcon: Icon(Icons.menu_book),
+                          label: 'Books',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.headset_mic_outlined),
+                          activeIcon: Icon(Icons.headset_mic),
+                          label: 'Sanctuary',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.person_outline),
+                          activeIcon: Icon(Icons.person),
+                          label: 'Profile',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -383,30 +405,25 @@ class _HomeScreenState extends State<HomeScreen> {
         .clamp(0.0, maxSecs);
     final isLight = Theme.of(context).brightness == Brightness.light;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isLight
-              ? [Colors.white, const Color(0xFFF8FAFC)]
-              : [const Color(0xFF111E3E), const Color(0xFF1E3A8A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border(
-          top: BorderSide(
-            color: isLight ? Colors.black.withOpacity(0.05) : const Color(0xFFFBBF24).withOpacity(0.3),
-            width: 1,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: isLight ? Colors.white : const Color(0xFF0F172A),
+          boxShadow: [
+            BoxShadow(
+              color: isLight ? Colors.black.withOpacity(0.04) : const Color(0xFF6366F1).withOpacity(0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: isLight ? Colors.black.withOpacity(0.05) : const Color(0xFFFBBF24).withOpacity(0.2),
+            width: 1.2,
           ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isLight ? Colors.black.withOpacity(0.06) : Colors.black.withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 4),
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -535,6 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+     ),
     );
   }
 
@@ -549,13 +567,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
       decoration: BoxDecoration(
-        color: isLight ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B).withOpacity(0.35),
+        color: isLight ? Colors.white : const Color(0xFF0F172A).withOpacity(0.5),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: color.withOpacity(isLight ? 0.15 : 0.4), width: 1.2),
+        border: Border.all(
+          color: isLight ? Colors.black.withOpacity(0.04) : Colors.white.withOpacity(0.06),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(isLight ? 0.04 : 0.25),
-            blurRadius: 20,
+            color: color.withOpacity(isLight ? 0.03 : 0.15),
+            blurRadius: 16,
             offset: const Offset(0, 6),
           ),
         ],
@@ -584,13 +605,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(isLight ? 0.2 : 0.45),
-                        blurRadius: 10,
+                        color: color.withOpacity(isLight ? 0.15 : 0.35),
+                        blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: 28),
+                  child: Icon(icon, color: Colors.white, size: 26),
                 ),
                 const SizedBox(height: 12),
                 // Title & subtitle
@@ -601,18 +622,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       title,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isLight ? const Color(0xFF1E293B) : Colors.white,
+                        fontWeight: FontWeight.w800,
+                        color: isLight ? const Color(0xFF0F172A) : Colors.white,
                         fontSize: 13,
+                        letterSpacing: -0.2,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: isLight ? color.withOpacity(0.85) : color.withOpacity(0.7),
+                        color: isLight ? Colors.black45 : Colors.white38,
                         fontSize: 9.5,
+                        fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -826,71 +849,123 @@ class _HomeScreenState extends State<HomeScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Shalom,',
-                    style: TextStyle(fontSize: 16, color: isLight ? Colors.indigo[900] : Colors.indigo[100]),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isLight ? const Color(0xFF6366F1).withOpacity(0.08) : const Color(0xFF818CF8).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'SHALOM',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: isLight ? const Color(0xFF4F46E5) : const Color(0xFFC084FC),
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 6),
                   Text(
-                    user?['name'] ?? 'Guest',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isLight ? const Color(0xFF1E293B) : Colors.white),
+                    user?['name'] ?? 'Guest Student',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: isLight ? const Color(0xFF0F172A) : Colors.white,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: () => setState(() => _selectedTab = 4),
-                child: Container(
-                  width: 45,
-                  height: 45,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFFFBBF24)],
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      user != null && user['name'].isNotEmpty ? user['name'][0].toUpperCase() : 'G',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Theme toggle button
-              GestureDetector(
-                onTap: () => Provider.of<ThemeService>(context, listen: false).toggle(),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: 52,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: isLight ? const Color(0xFF111E3E) : const Color(0xFFFBBF24),
-                  ),
-                  padding: const EdgeInsets.all(3),
-                  child: Stack(
-                    children: [
-                      AnimatedAlign(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        alignment: isLight ? Alignment.centerLeft : Alignment.centerRight,
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isLight ? Colors.white : const Color(0xFF111E3E),
-                          ),
-                          child: Icon(
-                            isLight ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                            size: 14,
-                            color: isLight ? const Color(0xFF111E3E) : const Color(0xFFFBBF24),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _selectedTab = 4),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFFC084FC), Color(0xFFFBBF24)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.3),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          )
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isLight ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        child: Center(
+                          child: Text(
+                            user != null && user['name'].isNotEmpty ? user['name'][0].toUpperCase() : 'G',
+                            style: TextStyle(
+                              color: isLight ? const Color(0xFF4F46E5) : const Color(0xFFFBBF24),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  // Theme toggle button
+                  GestureDetector(
+                    onTap: () => Provider.of<ThemeService>(context, listen: false).toggle(),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: 52,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: isLight ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                        border: Border.all(
+                          color: isLight ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.08),
+                          width: 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(3),
+                      child: Stack(
+                        children: [
+                          AnimatedAlign(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            alignment: isLight ? Alignment.centerLeft : Alignment.centerRight,
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isLight ? const Color(0xFF6366F1) : const Color(0xFFFBBF24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (isLight ? const Color(0xFF6366F1) : const Color(0xFFFBBF24)).withOpacity(0.3),
+                                    blurRadius: 4,
+                                  )
+                                ],
+                              ),
+                              child: Icon(
+                                isLight ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -901,26 +976,52 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFFFBBF24).withOpacity(isLight ? 0.12 : 0.08),
+                color: isLight ? Colors.white : const Color(0xFF0F172A).withOpacity(0.5),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFFBBF24).withOpacity(isLight ? 0.3 : 0.15)),
+                border: Border.all(
+                  color: const Color(0xFFFBBF24).withOpacity(isLight ? 0.3 : 0.2),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFBBF24).withOpacity(isLight ? 0.02 : 0.05),
+                    blurRadius: 16,
+                  )
+                ],
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Color(0xFFFBBF24), size: 30),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBBF24).withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.stars_rounded, color: Color(0xFFFBBF24), size: 24),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Unlocking Prophetic Schools',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: isLight ? const Color(0xFF1E293B) : Colors.white, fontSize: 15),
+                          'Unlock Prophetic Schools',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: isLight ? const Color(0xFF0F172A) : Colors.white,
+                            fontSize: 15,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Sign in to access your course catalog, assignments, and mentorship circles.',
-                          style: TextStyle(color: isLight ? Colors.black54 : Colors.indigo[100], fontSize: 11, height: 1.4),
+                          'Sign in to access your course catalog, study guides, and mentorship circles.',
+                          style: TextStyle(
+                            color: isLight ? Colors.black54 : Colors.white60,
+                            fontSize: 11,
+                            height: 1.4,
+                          ),
                         ),
                       ],
                     ),
@@ -929,10 +1030,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ElevatedButton(
                     onPressed: () => _navigateToTabProtected(1),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFBBF24),
-                      foregroundColor: const Color(0xFF0F172A),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                     ),
                     child: const Text('Login', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   )
@@ -944,46 +1046,71 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Daily Activation Devotional Card
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                colors: [Color(0xFF6366F1), Color(0xFFC084FC)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.purple.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
+                  color: const Color(0xFF6366F1).withOpacity(0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
                 )
               ],
+              border: Border.all(
+                color: Colors.white.withOpacity(0.15),
+                width: 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.auto_awesome, color: Color(0xFFFBBF24), size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'DAILY PROPHETIC ACTIVATION',
-                      style: TextStyle(color: Color(0xFFFBBF24), fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
-                    )
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.auto_awesome, color: Color(0xFFFBBF24), size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'DAILY PROPHETIC ACTIVATION',
+                            style: TextStyle(
+                              color: Color(0xFFFBBF24),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 9,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 const Text(
                   'Discerning Atmospheric Shifts',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 22,
+                    letterSpacing: -0.5,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Today\'s exercise: Spend 10 minutes in absolute silence. Write down the first three spiritual sensations that register in your environment.',
-                  style: TextStyle(color: Colors.indigo[50], fontSize: 14, height: 1.4),
+                  'Spend 10 minutes in absolute silence today. Document the spiritual sensations that register in your environment.',
+                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, height: 1.4),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -992,8 +1119,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF4F46E5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: const Color(0xFF6366F1),
+                    shape: const StadiumBorder(),
+                    elevation: 2,
+                    shadowColor: Colors.black.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
                   child: const Text('Log Response', style: TextStyle(fontWeight: FontWeight.bold)),
                 )
@@ -1034,11 +1164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: 'Play audio messages',
                 color: const Color(0xFF10B981),
                 gradientColors: const [Color(0xFF10B981), Color(0xFF059669)],
-                onTap: () {
-                  setState(() {
-                    _selectedTab = 3;
-                  });
-                },
+                onTap: () => _navigateToTabProtected(3),
               ),
               _buildGridCard(
                 icon: Icons.article_rounded,

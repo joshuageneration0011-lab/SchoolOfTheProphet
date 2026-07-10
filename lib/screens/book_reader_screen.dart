@@ -228,6 +228,10 @@ class _BookReaderScreenState extends State<BookReaderScreen> {
         backgroundColor: bgColor,
         elevation: 0.5,
         iconTheme: IconThemeData(color: textColor),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
