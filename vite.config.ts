@@ -13,6 +13,15 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), viteSingleFile()],
   server: {
     port: 5175,
+    proxy: {
+      // In development, forward /api requests to the local Express backend.
+      // This avoids CORS issues and means VITE_API_BASE_URL can stay as '/api'.
+      '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   resolve: {
     alias: {

@@ -2,7 +2,7 @@ import { useState, createContext, useContext, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from './services/api';
 import { 
-  Menu, X, Search, User, BookOpen, Book, Award, Play, Star, 
+  Menu, X, Search, User, BookOpen, Award, Play, Star, 
   ChevronRight, CheckCircle, Clock, Users, DollarSign,
   TrendingUp, Video, FileText, Settings,
   LogOut, Heart, Download, Shield, Globe, Zap, Target,
@@ -35,7 +35,7 @@ interface Course {
   videos?: { id: string; title: string; url: string; duration: string }[];
 }
 
-interface Book {
+export interface Book {
   id: string;
   title: string;
   author: string;
@@ -66,6 +66,7 @@ interface Audio {
   plays: number;
   isFeatured?: boolean;
   isBestseller?: boolean;
+  isProtected?: boolean;
   tracks: { id: string; title: string; url: string; duration: string }[];
 }
 
@@ -78,6 +79,7 @@ interface User {
   enrolledCourses?: string[];
   completedCourses?: string[];
   purchasedAudios?: string[];
+  grantedAudios?: string[];
 }
 
 interface AuthContextType {
@@ -2146,7 +2148,6 @@ const CheckoutAuthPage = ({
   onNavigate: (page: string) => void;
   onSuccess: (user: User) => void;
 }) => {
-  const { signup, login } = useAuth();
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   
   // Account Form states
@@ -2162,6 +2163,9 @@ const CheckoutAuthPage = ({
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Success state — shown briefly before redirect
+  const [successData, setSuccessData] = useState<{ title: string; type: 'course' | 'audio'; userName: string } | null>(null);
 
   const originalPrice = checkoutCourse ? checkoutCourse.price : (checkoutAudio ? checkoutAudio.price : 0);
   const finalPrice = originalPrice - discount;
@@ -2198,7 +2202,7 @@ const CheckoutAuthPage = ({
         authenticatedUser = await api.auth.login(email, password);
       }
 
-      // Step 2: Payment processing
+      // Step 2: Payment processing — show success screen, then redirect
       try {
         if (checkoutCourse) {
           await api.transactions.create({
@@ -2206,8 +2210,9 @@ const CheckoutAuthPage = ({
             course: checkoutCourse.title,
             amount: finalPrice
           });
-          alert(`Account configured & enrolled in ${checkoutCourse.title} successfully!`);
-          onSuccess(authenticatedUser);
+          const capturedUser = authenticatedUser;
+          setSuccessData({ title: checkoutCourse.title, type: 'course', userName: capturedUser.name });
+          setTimeout(() => onSuccess(capturedUser), 2600);
         } else if (checkoutAudio) {
           await api.transactions.create({
             student: authenticatedUser.name,
@@ -2215,15 +2220,15 @@ const CheckoutAuthPage = ({
             amount: finalPrice
           });
           await api.users.purchaseAudio(authenticatedUser.id, checkoutAudio.id);
-          // Update local user state
           const updatedAudios = [...(authenticatedUser.purchasedAudios || []), checkoutAudio.id];
           authenticatedUser = { ...authenticatedUser, purchasedAudios: updatedAudios };
-          alert(`Account configured & purchased "${checkoutAudio.title}" successfully!`);
-          onSuccess(authenticatedUser);
+          const capturedUser = authenticatedUser;
+          setSuccessData({ title: checkoutAudio.title, type: 'audio', userName: capturedUser.name });
+          setTimeout(() => onSuccess(capturedUser), 2600);
         }
       } catch (payErr) {
         console.error('Payment failed after account creation:', payErr);
-        alert('Your account was created successfully, but payment failed. You can complete enrollment from your new dashboard.');
+        alert('Your account was created, but payment failed. Complete enrollment from your dashboard.');
         onSuccess(authenticatedUser);
       }
 
@@ -2317,7 +2322,64 @@ const CheckoutAuthPage = ({
             </div>
 
             {/* Right Column: Unified Form */}
-            <div className="p-8 lg:p-10 flex flex-col justify-between max-h-[90vh] overflow-y-auto">
+            <div className="p-8 lg:p-10 flex flex-col justify-between max-h-[90vh] overflow-y-auto relative">
+
+              {/* ── SUCCESS OVERLAY ── */}
+              <AnimatePresence>
+                {successData && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.92 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white rounded-r-3xl p-10 text-center"
+                  >
+                    {/* Animated ring + checkmark */}
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
+                      className="relative mb-6"
+                    >
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-400/40">
+                        <CheckCircle className="w-12 h-12 text-white" strokeWidth={2.5} />
+                      </div>
+                      {/* Pulse ring */}
+                      <motion.div
+                        animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
+                        transition={{ duration: 1.6, repeat: Infinity }}
+                        className="absolute inset-0 rounded-full border-4 border-green-400"
+                      />
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 }}
+                    >
+                      <p className="text-xs font-bold uppercase tracking-widest text-green-500 mb-2">
+                        {successData.type === 'course' ? '🎓 Enrollment Confirmed' : '🎵 Purchase Complete'}
+                      </p>
+                      <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">
+                        Welcome aboard, {successData.userName.split(' ')[0]}!
+                      </h2>
+                      <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+                        <span className="font-semibold text-gray-700">"{successData.title}"</span> is now in your library.<br />
+                        Taking you to your dashboard...
+                      </p>
+
+                      {/* Progress bar */}
+                      <div className="w-48 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: '100%' }}
+                          transition={{ duration: 2.4, ease: 'linear' }}
+                          className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                        />
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div>
                 
                 {/* Unified Header */}
@@ -2564,11 +2626,19 @@ const StudentDashboard = ({
   onCheckout,
   initialActiveCourse,
   onClearInitialActiveCourse,
+  initialTab,
+  onClearInitialTab,
+  initialActiveAudio,
+  onClearInitialActiveAudio,
   onNavigate
 }: { 
   onCheckout?: (course: Course) => void; 
   initialActiveCourse?: Course | null;
   onClearInitialActiveCourse?: () => void;
+  initialTab?: 'overview' | 'courses' | 'student-audios' | 'assignments' | 'mentorship' | 'certificates' | 'support' | 'scholarships' | null;
+  onClearInitialTab?: () => void;
+  initialActiveAudio?: Audio | null;
+  onClearInitialActiveAudio?: () => void;
   onNavigate?: (page: string) => void;
 }) => {
   const { user } = useAuth();
@@ -2604,7 +2674,10 @@ const StudentDashboard = ({
     try {
       const allAudios = await api.audios.list();
       const purchasedIds = user?.purchasedAudios || [];
-      const filtered = allAudios.filter((a: Audio) => purchasedIds.includes(a.id));
+      const grantedIds = user?.grantedAudios || [];
+      const filtered = allAudios.filter((a: Audio) => 
+        purchasedIds.includes(a.id) || (a.isProtected && grantedIds.includes(a.id))
+      );
       setPurchasedAudios(filtered);
     } catch (err) {
       console.error("Failed to fetch purchased audios:", err);
@@ -2619,7 +2692,20 @@ const StudentDashboard = ({
     }
   }, [activeTab, user]);
 
+  const isAuthorized = (audioId: string) => {
+    if (user?.role === 'admin' || user?.role === 'instructor') return true;
+    const grantedIds = user?.grantedAudios || [];
+    if (grantedIds.includes(audioId)) return true;
+    const purchasedIds = user?.purchasedAudios || [];
+    if (purchasedIds.includes(audioId)) return true;
+    return false;
+  };
+
   const playAudioTrack = (audio: Audio, index: number) => {
+    if (!isAuthorized(audio.id)) {
+      alert("Access restricted — contact your administrator to grant access to this private audio series.");
+      return;
+    }
     setCurrentPlayingAudio(audio);
     setCurrentPlayingTrackIndex(index);
     setIsAudioPlaying(true);
@@ -2704,6 +2790,28 @@ const StudentDashboard = ({
       }
     }
   }, [initialActiveCourse]);
+
+  // Auto-switch to the correct tab after a purchase (e.g. 'courses' or 'student-audios')
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+      if (onClearInitialTab) {
+        onClearInitialTab();
+      }
+    }
+  }, [initialTab]);
+
+  // Auto-open and play a purchased audio after redirect
+  useEffect(() => {
+    if (initialActiveAudio) {
+      setCurrentPlayingAudio(initialActiveAudio);
+      setCurrentPlayingTrackIndex(0);
+      setIsAudioPlaying(false); // User must press play — browser autoplay policy
+      if (onClearInitialActiveAudio) {
+        onClearInitialActiveAudio();
+      }
+    }
+  }, [initialActiveAudio]);
   const [selectedLectureTab, setSelectedLectureTab] = useState<'details' | 'materials' | 'requirements'>('details');
 
   // Form states
@@ -4414,12 +4522,18 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
     title: '', artist: '', coverUrl: '',
     description: '', category: 'Prophetic', duration: '',
     price: '', originalPrice: '', isFeatured: false, isBestseller: false,
+    isProtected: false,
     tracks: [] as { title: string; url: string; duration: string }[]
   });
-  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [isSavingAudio, setIsSavingAudio] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [uploadingTrackIdx, setUploadingTrackIdx] = useState<number | null>(null);
+
+  // ─── AUDIO ACCESS MODAL STATE ───
+  const [accessModalAudio, setAccessModalAudio] = useState<Audio | null>(null);
+  const [accessUsersList, setAccessUsersList] = useState<{ id: string; name: string; email: string; hasAccess: boolean }[]>([]);
+  const [isAccessModalLoading, setIsAccessModalLoading] = useState(false);
+  const [accessSearchQuery, setAccessSearchQuery] = useState('');
 
 
   // Load all dashboard tables from the backend REST API
@@ -4602,7 +4716,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
   // ─── AUDIO CRUD METHODS ───
   const handleSaveAudio = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!audioFormData.title || !audioFormData.artist || !audioFormData.price) {
+    if (!audioFormData.title || !audioFormData.artist || (!audioFormData.isProtected && !audioFormData.price)) {
       alert('Please fill out Title, Artist, and Price.');
       return;
     }
@@ -4614,8 +4728,8 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
     try {
       const payload = {
         ...audioFormData,
-        price: parseFloat(audioFormData.price),
-        originalPrice: audioFormData.originalPrice ? parseFloat(audioFormData.originalPrice) : null,
+        price: audioFormData.isProtected ? 0 : parseFloat(audioFormData.price || '0'),
+        originalPrice: (!audioFormData.isProtected && audioFormData.originalPrice) ? parseFloat(audioFormData.originalPrice) : null,
       };
 
       if (editingAudio) {
@@ -4631,6 +4745,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
         title: '', artist: '', coverUrl: '',
         description: '', category: 'Prophetic', duration: '',
         price: '', originalPrice: '', isFeatured: false, isBestseller: false,
+        isProtected: false,
         tracks: []
       });
       setEditingAudio(null);
@@ -4657,11 +4772,43 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
       originalPrice: audio.originalPrice ? String(audio.originalPrice) : '',
       isFeatured: audio.isFeatured || false,
       isBestseller: audio.isBestseller || false,
+      isProtected: audio.isProtected || false,
       tracks: audio.tracks || []
     });
     setShowAudioForm(true);
   };
 
+  const handleManageAccess = async (audio: Audio) => {
+    setAccessModalAudio(audio);
+    setIsAccessModalLoading(true);
+    setAccessSearchQuery('');
+    try {
+      const data = await api.audios.getAccessList(audio.id);
+      setAccessUsersList(data);
+    } catch (err) {
+      console.error('Failed to load audio access list:', err);
+      alert('Failed to load audio access list.');
+    } finally {
+      setIsAccessModalLoading(false);
+    }
+  };
+
+  const handleToggleAccess = async (userId: string, currentAccess: boolean) => {
+    if (!accessModalAudio) return;
+    try {
+      if (currentAccess) {
+        await api.audios.revokeAccess(userId, accessModalAudio.id);
+      } else {
+        await api.audios.grantAccess(userId, accessModalAudio.id);
+      }
+      setAccessUsersList(prev =>
+        prev.map(u => u.id === userId ? { ...u, hasAccess: !currentAccess } : u)
+      );
+    } catch (err) {
+      console.error('Failed to toggle access:', err);
+      alert('Failed to toggle access permissions.');
+    }
+  };
 
   const handleDeleteAudio = async (audioId: string) => {
     if (!confirm('Are you sure you want to delete this audio product?')) return;
@@ -7164,6 +7311,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                         title: '', artist: '', coverUrl: '',
                         description: '', category: 'Prophetic', duration: '',
                         price: '', originalPrice: '', isFeatured: false, isBestseller: false,
+                        isProtected: false,
                         tracks: []
                       });
                       setShowAudioForm(true);
@@ -7206,6 +7354,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                                   <div>
                                     <div className="font-semibold text-gray-900 text-sm line-clamp-1">{audio.title}</div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
+                                      {audio.isProtected && <span className="text-[9px] font-black text-white bg-slate-900 px-1.5 py-0.5 rounded flex items-center gap-0.5">🔒 PRIVATE</span>}
                                       {audio.isBestseller && <span className="text-[9px] font-black text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">BESTSELLER</span>}
                                       {audio.isFeatured && <span className="text-[9px] font-black text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">FEATURED</span>}
                                     </div>
@@ -7214,8 +7363,16 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                               </td>
                               <td className="py-4 px-6 text-sm text-gray-600 font-medium">{audio.artist}</td>
                               <td className="py-4 px-6 text-sm font-bold text-purple-600">
-                                <div>₦{audio.price.toLocaleString()}</div>
-                                {audio.originalPrice && <div className="text-xs text-gray-400 line-through">₦{audio.originalPrice.toLocaleString()}</div>}
+                                {audio.isProtected ? (
+                                  <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                    <Lock className="w-3 h-3" /> Private
+                                  </span>
+                                ) : (
+                                  <>
+                                    <div>₦{audio.price.toLocaleString()}</div>
+                                    {audio.originalPrice && <div className="text-xs text-gray-400 line-through">₦{audio.originalPrice.toLocaleString()}</div>}
+                                  </>
+                                )}
                               </td>
                               <td className="py-4 px-6 text-sm text-gray-500">{audio.duration}</td>
                               <td className="py-4 px-6">
@@ -7225,6 +7382,15 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                               </td>
                               <td className="py-4 px-6 text-sm text-gray-500">{audio.plays} purchased</td>
                               <td className="py-4 px-6 text-right space-x-2">
+                                {audio.isProtected && (
+                                  <button
+                                    onClick={() => handleManageAccess(audio)}
+                                    className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1"
+                                  >
+                                    <Lock className="w-3 h-3" />
+                                    Manage Access
+                                  </button>
+                                )}
                                 <button 
                                   onClick={() => handleEditAudio(audio)}
                                   className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors"
@@ -7294,23 +7460,25 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Price (₦) *</label>
                           <input
                             type="number"
-                            required
+                            required={!audioFormData.isProtected}
+                            disabled={audioFormData.isProtected}
                             min="0"
-                            value={audioFormData.price}
+                            value={audioFormData.isProtected ? '0' : audioFormData.price}
                             onChange={e => setAudioFormData({...audioFormData, price: e.target.value})}
-                            placeholder="3000"
-                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            placeholder={audioFormData.isProtected ? 'Private/Access' : '3000'}
+                            className={`w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${audioFormData.isProtected ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                           />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Original Price (₦)</label>
                           <input
                             type="number"
+                            disabled={audioFormData.isProtected}
                             min="0"
-                            value={audioFormData.originalPrice}
+                            value={audioFormData.isProtected ? '' : audioFormData.originalPrice}
                             onChange={e => setAudioFormData({...audioFormData, originalPrice: e.target.value})}
                             placeholder="e.g. 5000"
-                            className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className={`w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${audioFormData.isProtected ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                           />
                         </div>
                       </div>
@@ -7354,7 +7522,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                         />
                       </div>
 
-                      <div className="flex gap-6 pt-2">
+                      <div className="flex flex-wrap gap-4 pt-2">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
@@ -7372,6 +7540,15 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
                             className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
                           />
                           <span className="text-xs font-semibold text-gray-700">Mark Bestseller</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={audioFormData.isProtected}
+                            onChange={e => setAudioFormData({...audioFormData, isProtected: e.target.checked})}
+                            className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                          />
+                          <span className="text-xs font-semibold text-gray-700">Access Protected</span>
                         </label>
                       </div>
                     </div>
@@ -7639,6 +7816,99 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
               </div>
             )}
           </motion.div>
+        )}
+
+        {/* Audio Access Management Modal */}
+        {accessModalAudio && (
+          <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-lg border border-gray-100 shadow-2xl relative flex flex-col max-h-[90vh]">
+              <button 
+                onClick={() => setAccessModalAudio(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:rotate-90"
+              >
+                ✕
+              </button>
+              
+              <div className="flex gap-4 items-start border-b border-gray-100 pb-4 pr-8">
+                <img 
+                  src={accessModalAudio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop'} 
+                  alt="" 
+                  className="w-14 h-14 object-cover rounded-xl border border-gray-100 shadow-sm" 
+                />
+                <div>
+                  <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" /> Access Gated
+                  </span>
+                  <h3 className="text-lg font-bold text-gray-900 mt-1 line-clamp-1">{accessModalAudio.title}</h3>
+                  <p className="text-xs text-gray-500 line-clamp-1">{accessModalAudio.artist}</p>
+                </div>
+              </div>
+
+              {/* Search users */}
+              <div className="py-3">
+                <input
+                  type="text"
+                  placeholder="Search users by name or email..."
+                  value={accessSearchQuery}
+                  onChange={e => setAccessSearchQuery(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-50"
+                />
+              </div>
+
+              {/* Users list */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[300px]">
+                {isAccessModalLoading ? (
+                  <div className="flex flex-col items-center justify-center h-full py-12 text-gray-400">
+                    <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-2" />
+                    <span className="text-xs">Loading authorized user list...</span>
+                  </div>
+                ) : (
+                  (() => {
+                    const filtered = accessUsersList.filter(u => 
+                      u.name.toLowerCase().includes(accessSearchQuery.toLowerCase()) || 
+                      u.email.toLowerCase().includes(accessSearchQuery.toLowerCase())
+                    );
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center py-12 text-gray-400 text-sm">
+                          No matching students found.
+                        </div>
+                      );
+                    }
+
+                    return filtered.map(u => (
+                      <div key={u.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-2xl hover:bg-gray-50 transition-colors">
+                        <div>
+                          <div className="font-semibold text-gray-800 text-sm">{u.name}</div>
+                          <div className="text-xs text-gray-400">{u.email}</div>
+                        </div>
+                        <button
+                          onClick={() => handleToggleAccess(u.id, u.hasAccess)}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all shadow-sm ${
+                            u.hasAccess 
+                              ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100' 
+                              : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-100'
+                          }`}
+                        >
+                          {u.hasAccess ? 'Revoke Access' : 'Grant Access'}
+                        </button>
+                      </div>
+                    ));
+                  })()
+                )}
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 flex justify-end">
+                <button
+                  onClick={() => setAccessModalAudio(null)}
+                  className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl text-sm shadow-md hover:bg-slate-800 transition-all"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
 
@@ -7952,6 +8222,8 @@ const AudiosPage = ({
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filtered.map((audio: Audio) => {
               const isPurchased = purchasedIds.includes(audio.id);
+              const hasGrantedAccess = user?.grantedAudios?.includes(audio.id) || user?.role === 'admin' || user?.role === 'instructor';
+              const isLocked = audio.isProtected && !hasGrantedAccess;
               return (
                 <motion.div
                   key={audio.id}
@@ -7965,6 +8237,15 @@ const AudiosPage = ({
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                    {audio.isProtected && (
+                      <span className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-black rounded-full uppercase flex items-center gap-1 shadow-md z-10 ${
+                        hasGrantedAccess 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-amber-500 text-slate-950'
+                      }`}>
+                        {hasGrantedAccess ? '🔓 Access Granted' : '🔒 Private Access'}
+                      </span>
+                    )}
                     {audio.isBestseller && (
                       <span className="absolute top-3 left-3 px-2.5 py-1 bg-amber-400 text-slate-900 text-[10px] font-black rounded-full uppercase">Bestseller</span>
                     )}
@@ -7973,7 +8254,11 @@ const AudiosPage = ({
                     )}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/40">
-                        <Headphones className="w-7 h-7 text-white" />
+                        {isLocked ? (
+                          <Lock className="w-7 h-7 text-white" />
+                        ) : (
+                          <Headphones className="w-7 h-7 text-white" />
+                        )}
                       </div>
                     </div>
                     <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
@@ -7987,17 +8272,41 @@ const AudiosPage = ({
                     <p className="text-xs text-indigo-300 mb-3">{audio.artist}</p>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        {audio.originalPrice && (
-                          <span className="text-xs text-indigo-400 line-through mr-1.5">₦{audio.originalPrice.toLocaleString()}</span>
+                        {audio.isProtected ? (
+                          <span className="text-sm font-black text-amber-400 uppercase tracking-wider">Private Access</span>
+                        ) : (
+                          <>
+                            {audio.originalPrice && (
+                              <span className="text-xs text-indigo-400 line-through mr-1.5">₦{audio.originalPrice.toLocaleString()}</span>
+                            )}
+                            <span className="text-lg font-black text-amber-400">₦{audio.price.toLocaleString()}</span>
+                          </>
                         )}
-                        <span className="text-lg font-black text-amber-400">₦{audio.price.toLocaleString()}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         <span className="text-xs text-indigo-200 font-bold">{audio.rating}</span>
                       </div>
                     </div>
-                    {isPurchased ? (
+                    {audio.isProtected ? (
+                      hasGrantedAccess ? (
+                        <button
+                          onClick={() => onNavigate('student-dashboard')}
+                          className="w-full py-2.5 bg-green-500/20 border border-green-500/40 text-green-400 text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all"
+                        >
+                          <Play className="w-4 h-4 fill-green-400" />
+                          Listen in Dashboard
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="w-full py-2.5 bg-white/5 border border-white/10 text-indigo-300/50 text-sm font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+                        >
+                          <Lock className="w-4 h-4" />
+                          Private — Gated
+                        </button>
+                      )
+                    ) : isPurchased ? (
                       <button
                         onClick={() => onNavigate('student-dashboard')}
                         className="w-full py-2.5 bg-green-500/20 border border-green-500/40 text-green-400 text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all"
@@ -8052,6 +8361,8 @@ function App() {
   const [checkoutAudio, setCheckoutAudio] = useState<Audio | null>(null);
   const [isAudioCheckingOut, setIsAudioCheckingOut] = useState(false);
   const [audioPaymentMethod, setAudioPaymentMethod] = useState<'card' | 'bank'>('card');
+  // Shared success state for both checkout modals
+  const [modalSuccess, setModalSuccess] = useState<{ title: string; type: 'course' | 'audio' } | null>(null);
 
   const fetchCoursesList = async () => {
     try {
@@ -8159,20 +8470,23 @@ function App() {
           course: checkoutCourse.title,
           amount: finalPrice
         });
-        alert(`Payment successful! Enrolled in ${checkoutCourse.title}.`);
-        
         const purchasedCourse = checkoutCourse;
-        setCheckoutCourse(null);
-        setCouponCode('');
-        setDiscount(0);
-        setAppliedCoupon('');
-        setPaymentMethod('card');
-        setEnrollmentTrigger(prev => prev + 1);
-        setAutoOpenCourse(purchasedCourse);
-        setAutoOpenTab('courses');
-        setCurrentPage('student-dashboard');
+        // Show success screen, then redirect after 2.5s
+        setModalSuccess({ title: purchasedCourse.title, type: 'course' });
+        setTimeout(() => {
+          setModalSuccess(null);
+          setCheckoutCourse(null);
+          setCouponCode('');
+          setDiscount(0);
+          setAppliedCoupon('');
+          setPaymentMethod('card');
+          setEnrollmentTrigger(prev => prev + 1);
+          setAutoOpenCourse(purchasedCourse);
+          setAutoOpenTab('courses');
+          setCurrentPage('student-dashboard');
+        }, 2600);
       } catch (err) {
-        alert('Payment processing failed.');
+        alert('Payment processing failed. Please try again.');
       } finally {
         setIsCheckingOut(false);
       }
@@ -8205,17 +8519,20 @@ function App() {
           amount: checkoutAudio.price
         });
         await api.users.purchaseAudio(user.id, checkoutAudio.id);
-        // Update local user state
         const updatedAudios = [...(user.purchasedAudios || []), checkoutAudio.id];
         setUser({ ...user, purchasedAudios: updatedAudios });
-        alert(`Purchase successful! "${checkoutAudio.title}" is now available in My Audios.`);
         const purchasedAudio = checkoutAudio;
-        setCheckoutAudio(null);
-        setAudioPaymentMethod('card');
-        fetchAudiosList();
-        setAutoOpenAudio(purchasedAudio);
-        setAutoOpenTab('student-audios');
-        setCurrentPage('student-dashboard');
+        // Show success screen, then redirect after 2.5s
+        setModalSuccess({ title: purchasedAudio.title, type: 'audio' });
+        setTimeout(() => {
+          setModalSuccess(null);
+          setCheckoutAudio(null);
+          setAudioPaymentMethod('card');
+          fetchAudiosList();
+          setAutoOpenAudio(purchasedAudio);
+          setAutoOpenTab('student-audios');
+          setCurrentPage('student-dashboard');
+        }, 2600);
       } catch (err) {
         alert('Audio payment processing failed. Please try again.');
       } finally {
@@ -8233,8 +8550,51 @@ function App() {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-slate-950 rounded-3xl overflow-hidden shadow-2xl w-full max-w-md border border-white/10 flex flex-col max-h-[90vh]"
+            className="bg-slate-950 rounded-3xl overflow-hidden shadow-2xl w-full max-w-md border border-white/10 flex flex-col max-h-[90vh] relative"
           >
+            {/* ── AUDIO MODAL SUCCESS OVERLAY ── */}
+            <AnimatePresence>
+              {modalSuccess && modalSuccess.type === 'audio' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950 rounded-3xl p-10 text-center"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
+                    className="relative mb-6"
+                  >
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-2xl shadow-green-500/40">
+                      <CheckCircle className="w-12 h-12 text-white" strokeWidth={2.5} />
+                    </div>
+                    <motion.div
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 1.6, repeat: Infinity }}
+                      className="absolute inset-0 rounded-full border-4 border-green-400"
+                    />
+                  </motion.div>
+                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                    <p className="text-xs font-bold uppercase tracking-widest text-green-400 mb-2">🎵 Purchase Complete!</p>
+                    <h2 className="text-2xl font-extrabold text-white mb-2">You're all set!</h2>
+                    <p className="text-sm text-slate-400 mb-5 leading-relaxed">
+                      <span className="font-semibold text-slate-200">"{modalSuccess.title}"</span><br />
+                      is now in your Audio Sanctuary.
+                    </p>
+                    <div className="w-44 h-1.5 bg-slate-800 rounded-full mx-auto overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 2.4, ease: 'linear' }}
+                        className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                      />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             {/* Header */}
             <div className="p-6 border-b border-white/10 bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -8327,7 +8687,6 @@ function App() {
   };
 
   const renderCheckoutModal = () => {
-
     if (!checkoutCourse || !user) return null;
     const finalPrice = checkoutCourse.price - discount;
 
@@ -8338,8 +8697,51 @@ function App() {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white rounded-3xl overflow-hidden shadow-2xl w-full max-w-md border border-gray-100 flex flex-col max-h-[90vh]"
+            className="bg-white rounded-3xl overflow-hidden shadow-2xl w-full max-w-md border border-gray-100 flex flex-col max-h-[90vh] relative"
           >
+            {/* ── COURSE MODAL SUCCESS OVERLAY ── */}
+            <AnimatePresence>
+              {modalSuccess && modalSuccess.type === 'course' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-white rounded-3xl p-10 text-center"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
+                    className="relative mb-6"
+                  >
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-400/30">
+                      <CheckCircle className="w-12 h-12 text-white" strokeWidth={2.5} />
+                    </div>
+                    <motion.div
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 1.6, repeat: Infinity }}
+                      className="absolute inset-0 rounded-full border-4 border-green-400"
+                    />
+                  </motion.div>
+                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                    <p className="text-xs font-bold uppercase tracking-widest text-green-600 mb-2">🎓 Enrollment Confirmed!</p>
+                    <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Payment Successful!</h2>
+                    <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+                      <span className="font-semibold text-gray-700">"{modalSuccess.title}"</span><br />
+                      is now in your course library.
+                    </p>
+                    <div className="w-44 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 2.4, ease: 'linear' }}
+                        className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                      />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             {/* Header */}
             <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white flex justify-between items-center">
               <div>

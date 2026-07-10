@@ -6,10 +6,24 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     ...(options.headers || {})
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+  } catch (networkError: any) {
+    // This fires when the server is completely unreachable (no internet,
+    // server down, CORS preflight blocked, etc.)
+    const isOffline = !navigator.onLine;
+    if (isOffline) {
+      throw new Error('You appear to be offline. Please check your internet connection and try again.');
+    }
+    throw new Error(
+      'Unable to reach the server. Please try again in a moment. ' +
+      '(If this persists, the service may be temporarily unavailable.)'
+    );
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -75,7 +89,19 @@ export const api = {
         body: JSON.stringify(audioData)
       }),
     delete: (audioId: string) =>
-      fetchAPI(`/audios/${audioId}`, { method: 'DELETE' })
+      fetchAPI(`/audios/${audioId}`, { method: 'DELETE' }),
+    getAccessList: (audioId: string) =>
+      fetchAPI(`/audios/${audioId}/access-list`),
+    grantAccess: (userId: string, audioId: string) =>
+      fetchAPI(`/users/${userId}/grant-audio`, {
+        method: 'PUT',
+        body: JSON.stringify({ audioId })
+      }),
+    revokeAccess: (userId: string, audioId: string) =>
+      fetchAPI(`/users/${userId}/revoke-audio`, {
+        method: 'PUT',
+        body: JSON.stringify({ audioId })
+      })
   },
   users: {
     list: () => fetchAPI('/users'),
@@ -250,6 +276,20 @@ export const api = {
       const formData = new FormData();
       formData.append('audio', file);
       return fetch(`${API_BASE_URL}/upload/audio`, {
+        method: 'POST',
+        body: formData
+      }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP error ${res.status}`);
+        }
+        return res.json();
+      });
+    },
+    image: (file: File) => {
+      const formData = new FormData();
+      formData.append('image', file);
+      return fetch(`${API_BASE_URL}/upload/image`, {
         method: 'POST',
         body: formData
       }).then(async (res) => {

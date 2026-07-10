@@ -70,6 +70,19 @@ app.post('/api/upload/audio', upload.single('audio'), (req, res) => {
   }
 });
 
+// Image file upload (jpg/png/webp up to 10MB)
+app.post('/api/upload/image', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded.' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.status(200).json({ url: fileUrl });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Helper to log audit actions
 async function createAuditLog(admin: string, action: string, target: string, severity: 'info' | 'warning' | 'danger') {
   try {
@@ -117,7 +130,8 @@ app.post('/api/auth/login', async (req, res) => {
       status: user.status,
       enrolledCourses: enrolled,
       completedCourses: completed,
-      purchasedAudios: JSON.parse(user.purchasedAudios || '[]')
+      purchasedAudios: JSON.parse(user.purchasedAudios || '[]'),
+      grantedAudios: JSON.parse(user.grantedAudios || '[]')
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -152,7 +166,9 @@ app.post('/api/auth/signup', async (req, res) => {
       role: user.role,
       status: user.status,
       enrolledCourses: [],
-      completedCourses: []
+      completedCourses: [],
+      purchasedAudios: [],
+      grantedAudios: []
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -344,7 +360,9 @@ app.get('/api/users', async (req, res) => {
     const parsed = users.map(u => ({
       ...u,
       enrolledCourses: JSON.parse(u.enrolledCourses),
-      completedCourses: JSON.parse(u.completedCourses)
+      completedCourses: JSON.parse(u.completedCourses),
+      purchasedAudios: JSON.parse(u.purchasedAudios || '[]'),
+      grantedAudios: JSON.parse(u.grantedAudios || '[]')
     }));
     res.json(parsed);
   } catch (err: any) {
@@ -965,7 +983,10 @@ app.delete('/api/audit/roles/:id', async (req, res) => {
 // ─── AUDIO ENDPOINTS ─────────────────────────────────────────────────────────
 app.get('/api/audios', async (req, res) => {
   try {
-    const audios = await (prisma as any).audio.findMany({ orderBy: { isFeatured: 'desc' } });
+    const audios = await (prisma as any).audio.findMany({
+      include: { tracks: true },
+      orderBy: { isFeatured: 'desc' }
+    });
     res.json(audios);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -973,22 +994,30 @@ app.get('/api/audios', async (req, res) => {
 });
 
 app.post('/api/audios', async (req, res) => {
-  const { title, artist, coverUrl, audioUrl, description, category, duration, price, originalPrice, isFeatured, isBestseller } = req.body;
+  const { title, artist, coverUrl, description, category, duration, price, originalPrice, isFeatured, isBestseller, isProtected, tracks } = req.body;
   try {
     const audio = await (prisma as any).audio.create({
       data: {
         title,
         artist,
         coverUrl,
-        audioUrl,
         description,
         category,
         duration: duration || '0 min',
-        price: parseFloat(price),
+        price: parseFloat(price || '0'),
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
         isFeatured: isFeatured || false,
-        isBestseller: isBestseller || false
-      }
+        isBestseller: isBestseller || false,
+        isProtected: isProtected || false,
+        tracks: {
+          create: (tracks || []).map((t: any) => ({
+            title: t.title,
+            url: t.url,
+            duration: t.duration || '5 min'
+          }))
+        }
+      },
+      include: { tracks: true }
     });
     await createAuditLog('Admin', 'Created Audio Product', title, 'info');
     res.status(201).json(audio);
@@ -999,12 +1028,40 @@ app.post('/api/audios', async (req, res) => {
 
 app.put('/api/audios/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, artist, coverUrl, audioUrl, description, category, duration, price, originalPrice, isFeatured, isBestseller } = req.body;
+  const { title, artist, coverUrl, description, category, duration, price, originalPrice, isFeatured, isBestseller, isProtected, tracks } = req.body;
   try {
-    const audio = await (prisma as any).audio.update({
-      where: { id },
-      data: { title, artist, coverUrl, audioUrl, description, category, duration, price: parseFloat(price), originalPrice: originalPrice ? parseFloat(originalPrice) : null, isFeatured: isFeatured || false, isBestseller: isBestseller || false }
+    // Recreate tracks inside a transaction
+    const audio = await prisma.$transaction(async (tx) => {
+      // 1. Delete old tracks
+      await (tx as any).audioTrack.deleteMany({ where: { audioId: id } });
+
+      // 2. Update audio and create new tracks
+      return await (tx as any).audio.update({
+        where: { id },
+        data: {
+          title,
+          artist,
+          coverUrl,
+          description,
+          category,
+          duration: duration || '0 min',
+          price: parseFloat(price || '0'),
+          originalPrice: originalPrice ? parseFloat(originalPrice) : null,
+          isFeatured: isFeatured || false,
+          isBestseller: isBestseller || false,
+          isProtected: isProtected || false,
+          tracks: {
+            create: (tracks || []).map((t: any) => ({
+              title: t.title,
+              url: t.url,
+              duration: t.duration || '5 min'
+            }))
+          }
+        },
+        include: { tracks: true }
+      });
     });
+
     await createAuditLog('Admin', 'Updated Audio Product', title, 'info');
     res.json(audio);
   } catch (err: any) {
@@ -1015,6 +1072,7 @@ app.put('/api/audios/:id', async (req, res) => {
 app.delete('/api/audios/:id', async (req, res) => {
   const { id } = req.params;
   try {
+    // Delete cascading works automatically as defined in Prisma schema
     const audio = await (prisma as any).audio.delete({ where: { id } });
     await createAuditLog('Admin', 'Deleted Audio Product', audio.title, 'warning');
     res.json({ message: 'Audio deleted successfully' });
@@ -1022,6 +1080,7 @@ app.delete('/api/audios/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // Add purchased audio to user's purchasedAudios list
 app.put('/api/users/:id/purchase-audio', async (req, res) => {
@@ -1036,6 +1095,65 @@ app.put('/api/users/:id/purchase-audio', async (req, res) => {
     // Increment plays count
     await (prisma as any).audio.update({ where: { id: audioId }, data: { plays: { increment: 1 } } });
     res.json({ purchasedAudios: current });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ─── AUDIO ACCESS MANAGEMENT ENDPOINTS ───────────────────────────────────────
+
+// Get access list for a protected audio — returns all users with their grant status
+app.get('/api/audios/:id/access-list', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: 'student' }
+    });
+    const accessList = users.map(u => {
+      const granted: string[] = JSON.parse(u.grantedAudios || '[]');
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        hasAccess: granted.includes(id)
+      };
+    });
+    res.json(accessList);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Grant a user access to a protected audio
+app.put('/api/users/:id/grant-audio', async (req, res) => {
+  const { id } = req.params;
+  const { audioId } = req.body;
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const current: string[] = JSON.parse(user.grantedAudios || '[]');
+    if (!current.includes(audioId)) current.push(audioId);
+    await prisma.user.update({ where: { id }, data: { grantedAudios: JSON.stringify(current) } });
+    await createAuditLog('Admin', 'Granted Audio Access', `${user.name} → ${audioId}`, 'info');
+    res.json({ grantedAudios: current });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Revoke a user's access to a protected audio
+app.put('/api/users/:id/revoke-audio', async (req, res) => {
+  const { id } = req.params;
+  const { audioId } = req.body;
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const current: string[] = JSON.parse(user.grantedAudios || '[]');
+    const updated = current.filter(a => a !== audioId);
+    await prisma.user.update({ where: { id }, data: { grantedAudios: JSON.stringify(updated) } });
+    await createAuditLog('Admin', 'Revoked Audio Access', `${user.name} → ${audioId}`, 'warning');
+    res.json({ grantedAudios: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1136,13 +1254,12 @@ async function autoSeedIfEmpty() {
     // 2. Seed digital audios if empty
     const audioCount = await (prisma as any).audio.count();
     if (audioCount === 0) {
-      console.log('Database has 0 audios. Seeding 5 default digital audio courses...');
+      console.log('Database has 0 audios. Seeding 5 default digital audio courses with multiple tracks...');
       const audios = [
         {
           title: 'Discerning Prophetic Times & Seasons',
           artist: 'Apostle Joshua Generation',
           coverUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop',
-          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
           description: 'Deep dive into understanding spiritual watches, registering shifts in the atmosphere, and moving with prophetic accuracy.',
           category: 'Prophetic',
           duration: '1 hr 15 min',
@@ -1151,13 +1268,19 @@ async function autoSeedIfEmpty() {
           rating: 4.9,
           plays: 24,
           isFeatured: true,
-          isBestseller: true
+          isBestseller: true,
+          tracks: {
+            create: [
+              { title: 'Part 1: The Chronology of the Spirit', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', duration: '25 min' },
+              { title: 'Part 2: Registering Atmospheres', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', duration: '30 min' },
+              { title: 'Part 3: Prophetic Positioning', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', duration: '20 min' }
+            ]
+          }
         },
         {
           title: 'Deep Prophetic Intercession & Worship',
           artist: 'Minister Grace Okoro',
           coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop',
-          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
           description: 'Anointed atmospheric worship designed to usher you into deeper portals of personal and corporate intercessory prayer.',
           category: 'Worship',
           duration: '58 min',
@@ -1166,13 +1289,18 @@ async function autoSeedIfEmpty() {
           rating: 4.8,
           plays: 18,
           isFeatured: false,
-          isBestseller: false
+          isBestseller: false,
+          tracks: {
+            create: [
+              { title: 'Atmospheric Alignment (Worship)', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', duration: '20 min' },
+              { title: 'The Sound of Intercession (Prayer)', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', duration: '38 min' }
+            ]
+          }
         },
         {
           title: 'Warfare Prayers & Midnight Decree',
           artist: 'Apostle David Okonkwo',
           coverUrl: 'https://images.unsplash.com/photo-1442504028989-ab58b5f69a3a?w=400&h=400&fit=crop',
-          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
           description: 'Command the morning watches and release strategic midnight decrees to dismantle dark spiritual strongholds.',
           category: 'Warfare',
           duration: '1 hr 45 min',
@@ -1181,13 +1309,19 @@ async function autoSeedIfEmpty() {
           rating: 4.9,
           plays: 35,
           isFeatured: true,
-          isBestseller: true
+          isBestseller: true,
+          tracks: {
+            create: [
+              { title: 'Midnight Alignment & Protocols', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', duration: '30 min' },
+              { title: 'Commanding the Morning Watches', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', duration: '45 min' },
+              { title: 'Releasing Prophetic Decrees', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', duration: '30 min' }
+            ]
+          }
         },
         {
           title: "The Watchman's Call: Strategic Prayer",
           artist: 'Prophetess Grace Adeyemi',
           coverUrl: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&h=400&fit=crop',
-          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
           description: 'Equipping global watchmen to construct effective prayer coordinates to cover families, local churches, and territories.',
           category: 'Prayer',
           duration: '1 hr 20 min',
@@ -1196,13 +1330,18 @@ async function autoSeedIfEmpty() {
           rating: 4.7,
           plays: 12,
           isFeatured: false,
-          isBestseller: false
+          isBestseller: false,
+          tracks: {
+            create: [
+              { title: 'Activating the Watchman Gate', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', duration: '40 min' },
+              { title: 'Constructing Territory Coverings', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', duration: '40 min' }
+            ]
+          }
         },
         {
           title: 'Activating the Gift of Discerning of Spirits',
           artist: 'Prophet Elijah Mensah',
           coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop',
-          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
           description: 'Intensive scriptural exposition and activation guidelines on registering angelic entities, spiritual frequencies, and demonic operations.',
           category: 'Prophetic',
           duration: '2 hr 5 min',
@@ -1211,14 +1350,24 @@ async function autoSeedIfEmpty() {
           rating: 4.9,
           plays: 42,
           isFeatured: true,
-          isBestseller: true
+          isBestseller: true,
+          tracks: {
+            create: [
+              { title: 'Introduction to Spirit Realms', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3', duration: '45 min' },
+              { title: 'Discerning Angelic Operations', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3', duration: '40 min' },
+              { title: 'Exposing Demonic Frequencies', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3', duration: '40 min' }
+            ]
+          }
         }
       ];
 
       for (const a of audios) {
-        await (prisma as any).audio.create({ data: a });
+        await (prisma as any).audio.create({
+          data: a,
+          include: { tracks: true }
+        });
       }
-      console.log('Seeded 5 digital audio courses successfully.');
+      console.log('Seeded 5 digital audio courses with multiple tracks successfully.');
     }
   } catch (err) {
     console.error('Error executing auto-seed:', err);
