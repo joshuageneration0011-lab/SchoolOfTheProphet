@@ -8152,6 +8152,8 @@ const AudiosPage = ({
   const { user } = useAuth();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const [selectedDetailsAudio, setSelectedDetailsAudio] = useState<Audio | null>(null);
+
   const categories = ['All', ...Array.from(new Set(audios.map((a: Audio) => a.category)))];
   const filtered = audios.filter((a: Audio) => {
     const matchCat = filter === 'All' || a.category === filter;
@@ -8228,7 +8230,8 @@ const AudiosPage = ({
                 <motion.div
                   key={audio.id}
                   whileHover={{ y: -6 }}
-                  className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-sm hover:border-amber-400/30 hover:shadow-2xl hover:shadow-amber-500/10 transition-all group"
+                  className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-sm hover:border-amber-400/30 hover:shadow-2xl hover:shadow-amber-500/10 transition-all group cursor-pointer"
+                  onClick={() => setSelectedDetailsAudio(audio)}
                 >
                   <div className="relative aspect-square overflow-hidden">
                     <img
@@ -8291,7 +8294,10 @@ const AudiosPage = ({
                     {audio.isProtected ? (
                       hasGrantedAccess ? (
                         <button
-                          onClick={() => onNavigate('student-dashboard')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onNavigate('student-dashboard');
+                          }}
                           className="w-full py-2.5 bg-green-500/20 border border-green-500/40 text-green-400 text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all"
                         >
                           <Play className="w-4 h-4 fill-green-400" />
@@ -8300,6 +8306,7 @@ const AudiosPage = ({
                       ) : (
                         <button
                           disabled
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full py-2.5 bg-white/5 border border-white/10 text-indigo-300/50 text-sm font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
                         >
                           <Lock className="w-4 h-4" />
@@ -8308,7 +8315,10 @@ const AudiosPage = ({
                       )
                     ) : isPurchased ? (
                       <button
-                        onClick={() => onNavigate('student-dashboard')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigate('student-dashboard');
+                        }}
                         className="w-full py-2.5 bg-green-500/20 border border-green-500/40 text-green-400 text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all"
                       >
                         <Play className="w-4 h-4 fill-green-400" />
@@ -8318,7 +8328,10 @@ const AudiosPage = ({
                       <motion.button
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
-                        onClick={() => onBuy(audio)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onBuy(audio);
+                        }}
                         className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 text-sm font-extrabold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30"
                       >
                         <ShoppingBag className="w-4 h-4" />
@@ -8332,6 +8345,194 @@ const AudiosPage = ({
           </div>
         )}
       </div>
+
+      {/* Details & Tracklist Modal */}
+      <AnimatePresence>
+        {selectedDetailsAudio && (() => {
+          const audio = selectedDetailsAudio;
+          const isPurchased = purchasedIds.includes(audio.id);
+          const hasGrantedAccess = user?.grantedAudios?.includes(audio.id) || user?.role === 'admin' || user?.role === 'instructor';
+          const isLocked = audio.isProtected && !hasGrantedAccess;
+
+          return (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-slate-950 rounded-3xl overflow-hidden shadow-2xl w-full max-w-2xl border border-white/10 flex flex-col max-h-[90vh] relative text-white"
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-white/10 bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-400/20 rounded-xl flex items-center justify-center">
+                      <Headphones className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg">Audio Course Details</h3>
+                      <p className="text-xs text-indigo-200">Track overview and description</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedDetailsAudio(null)}
+                    className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-6 overflow-y-auto flex-1">
+                  {/* Top info card */}
+                  <div className="flex flex-col md:flex-row gap-5 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="relative w-full md:w-40 aspect-square rounded-xl overflow-hidden flex-shrink-0">
+                      <img
+                        src={audio.coverUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop'}
+                        alt={audio.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {audio.isProtected && (
+                        <span className={`absolute top-2 right-2 px-2 py-0.5 text-[8px] font-black rounded-full uppercase flex items-center gap-1 shadow-md z-10 ${
+                          hasGrantedAccess ? 'bg-green-500 text-white' : 'bg-amber-500 text-slate-950'
+                        }`}>
+                          {hasGrantedAccess ? '🔓 Granted' : '🔒 Private'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] bg-amber-400/20 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">{audio.category}</span>
+                        <h4 className="font-extrabold text-white text-lg mt-2 leading-tight">{audio.title}</h4>
+                        <p className="text-sm text-indigo-300 mt-1">{audio.artist}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-4 mt-4 text-xs text-indigo-400">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{audio.duration}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Music className="w-3.5 h-3.5" />
+                          <span>{audio.tracks?.length || 0} Tracks</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span className="text-white font-bold">{audio.rating}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</h5>
+                    <p className="text-sm text-indigo-100/90 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
+                      {audio.description || "No description provided for this audio course."}
+                    </p>
+                  </div>
+
+                  {/* Tracks Inside */}
+                  <div className="space-y-3">
+                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                      <span>Playlist ({audio.tracks?.length || 0} tracks)</span>
+                      {isLocked && <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">🔒 Preview Only</span>}
+                    </h5>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {(audio.tracks || []).map((track, idx) => (
+                        <div
+                          key={track.id || idx}
+                          className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/8 transition-all"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-indigo-300">
+                              {idx + 1}
+                            </div>
+                            <span className="text-xs font-semibold text-indigo-100 truncate">{track.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-[10px] text-indigo-400 font-mono">{track.duration}</span>
+                            {isLocked ? (
+                              <Lock className="w-3 h-3 text-amber-500" />
+                            ) : hasGrantedAccess || isPurchased ? (
+                              <Play className="w-3 h-3 text-green-400 fill-green-400" />
+                            ) : (
+                              <Lock className="w-3 h-3 text-indigo-500" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-6 border-t border-white/10 bg-slate-950 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                  <div>
+                    {audio.isProtected ? (
+                      <span className="text-sm font-black text-amber-400 uppercase tracking-wider">Private Access Only</span>
+                    ) : (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-xs text-indigo-400">Total Price:</span>
+                        <span className="text-xl font-black text-amber-400">₦{audio.price.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => setSelectedDetailsAudio(null)}
+                      className="flex-1 sm:flex-initial px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-sm transition-all"
+                    >
+                      Close
+                    </button>
+                    {audio.isProtected ? (
+                      hasGrantedAccess ? (
+                        <button
+                          onClick={() => {
+                            setSelectedDetailsAudio(null);
+                            onNavigate('student-dashboard');
+                          }}
+                          className="flex-1 sm:flex-initial px-6 py-2.5 bg-green-500 text-white font-bold rounded-xl text-sm hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Play className="w-4 h-4 fill-white" />
+                          Listen in Dashboard
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="flex-1 sm:flex-initial px-6 py-2.5 bg-white/5 border border-white/10 text-indigo-300/50 font-bold rounded-xl text-sm cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          <Lock className="w-4 h-4" />
+                          Private — Gated
+                        </button>
+                      )
+                    ) : isPurchased ? (
+                      <button
+                        onClick={() => {
+                          setSelectedDetailsAudio(null);
+                          onNavigate('student-dashboard');
+                        }}
+                        className="flex-1 sm:flex-initial px-6 py-2.5 bg-green-500 text-white font-bold rounded-xl text-sm hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Play className="w-4 h-4 fill-white" />
+                        Play Now in Dashboard
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setSelectedDetailsAudio(null);
+                          onBuy(audio);
+                        }}
+                        className="flex-1 sm:flex-initial px-6 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 font-extrabold rounded-xl text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        Buy Message — ₦{audio.price.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 };
