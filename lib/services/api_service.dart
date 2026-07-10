@@ -525,7 +525,24 @@ class ApiService extends ChangeNotifier {
     try {
       final response = await http.get(Uri.parse('https://joshuasgeneration.com/api/blog'));
       if (response.statusCode == 200) {
-        _blogPosts = json.decode(response.body);
+        final List<dynamic> rawPosts = json.decode(response.body);
+        _blogPosts = rawPosts.map((p) {
+          final Map<String, dynamic> postMap = Map<String, dynamic>.from(p);
+          postMap['thumbnail'] = postMap['imageUrl'] ?? 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800&fit=crop&q=80';
+          postMap['subtitle'] = postMap['excerpt'] ?? '';
+          postMap['likes'] = postMap['likes'] ?? 0;
+          postMap['views'] = postMap['views'] ?? 0;
+          postMap['likedByUser'] = postMap['likedByUser'] ?? false;
+          postMap['comments'] = postMap['comments'] ?? [];
+          if (postMap['author'] == null || postMap['author'].toString().trim().isEmpty) {
+            postMap['author'] = 'Apostle Joshua Iyemifokhae';
+          }
+          postMap['date'] = postMap['date'] ?? 'June 18, 2026';
+          postMap['readTime'] = postMap['readTime'] ?? '5 min read';
+          postMap['category'] = postMap['category'] ?? 'Revelation';
+          postMap['content'] = postMap['content'] ?? '';
+          return postMap;
+        }).toList();
         notifyListeners();
         return;
       }
